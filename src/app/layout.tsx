@@ -5,6 +5,9 @@ import { Toaster } from "@/components/ui/toaster"
 export const metadata: Metadata = {
   title: 'lhihi AI',
   description: 'A ChatGPT-like AI assistant',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

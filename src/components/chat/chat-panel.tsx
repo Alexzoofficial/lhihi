@@ -20,6 +20,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useUser } from '@/firebase';
+import { signInWithGoogle, signOutWithGoogle } from '@/firebase/auth';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getAuth } from 'firebase/auth';
+import { useToast } from '@/hooks/use-toast';
+
 
 const formSchema = z
   .object({
@@ -36,6 +42,8 @@ type FormValues = z.infer<typeof formSchema>;
 export default function ChatPanel() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isResponding, setIsResponding] = useState(false);
+  const { user, loading } = useUser();
+  const { toast } = useToast();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -44,6 +52,41 @@ export default function ChatPanel() {
       attachments: [],
     },
   });
+
+  const handleLogin = async () => {
+    try {
+      await signInWithGoogle();
+      toast({
+        title: 'Success',
+        description: 'You have been logged in.',
+      });
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to log in. Please try again.',
+      });
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const auth = getAuth();
+      await signOutWithGoogle(auth);
+      toast({
+        title: 'Success',
+        description: 'You have been logged out.',
+      });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to log out. Please try again.',
+      });
+    }
+  };
 
   const onSubmit = async (data: FormValues) => {
     setIsResponding(true);
@@ -114,6 +157,11 @@ export default function ChatPanel() {
     'How do Next.js server components work?',
     'Write a poem about coding.',
   ];
+  
+  const onExampleQueryClick = (query: string) => {
+    form.setValue('message', query);
+    form.handleSubmit(onSubmit)();
+  };
 
   return (
     <main className="flex flex-col h-full max-h-screen">
@@ -123,16 +171,33 @@ export default function ChatPanel() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon">
-              <UserIcon className="size-5" />
+              {loading ? (
+                <div className="h-5 w-5 rounded-full bg-gray-300 animate-pulse" />
+              ) : user ? (
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? ''} />
+                  <AvatarFallback>
+                    {user.displayName?.charAt(0) ?? <UserIcon className="size-5" />}
+                  </AvatarFallback>
+                </Avatar>
+              ) : (
+                <UserIcon className="size-5" />
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Log out</DropdownMenuItem>
+            {user ? (
+              <>
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Profile</DropdownMenuItem>
+                <DropdownMenuItem>Settings</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
+              </>
+            ) : (
+              <DropdownMenuItem onClick={handleLogin}>Log in with Google</DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
@@ -156,7 +221,7 @@ export default function ChatPanel() {
                   key={query}
                   variant="outline"
                   className="p-4 h-auto text-left justify-start bg-background/50 hover:bg-white"
-                  onClick={() => form.setValue('message', query)}
+                  onClick={() => onExampleQueryClick(query)}
                 >
                   {query}
                 </Button>
