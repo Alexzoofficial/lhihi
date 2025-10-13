@@ -1,30 +1,16 @@
 'use client';
 
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarInset,
-} from '@/components/ui/sidebar';
+import React from 'react';
 import { ChatSidebarContent } from './chat-sidebar';
 import ChatPanel from './chat-panel';
-import React from 'react';
 
 export function ChatLayout() {
-  const [open, setOpen] = React.useState(() => {
-    if (typeof window === 'undefined') {
-      return true;
-    }
-    return document.cookie.includes('sidebar_state=true');
-  });
-
   return (
-    <SidebarProvider open={open} onOpenChange={setOpen}>
-      <Sidebar variant="sidebar" collapsible="icon">
-        <ChatSidebarContent />
-      </Sidebar>
-      <SidebarInset>
+    <div className="flex h-screen bg-background text-foreground">
+      <ChatSidebarContent />
+      <div className="flex-1 flex flex-col">
         <ChatPanel />
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+    </div>
   );
 }

@@ -5,15 +5,20 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { generateResponse } from '@/ai/flows/generate-response';
-import type { Message } from '@/lib/types';
+import type { Message, Attachment } from '@/lib/types';
 import { ChatMessages } from './chat-messages';
 import { ChatInput } from './chat-input';
 import { LhihiLogo } from '../icons';
 import { Button } from '../ui/button';
 
 const formSchema = z.object({
-  message: z.string().min(1, 'Message cannot be empty.'),
+  message: z.string(),
+  attachments: z.array(z.any()),
+}).refine(data => data.message.length > 0 || data.attachments.length > 0, {
+  message: 'Message or attachment cannot be empty.',
+  path: ['message'],
 });
+
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -25,6 +30,7 @@ export default function ChatPanel() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       message: '',
+      attachments: [],
     },
   });
 
@@ -33,6 +39,7 @@ export default function ChatPanel() {
       id: Date.now().toString(),
       role: 'user',
       content: data.message,
+      attachments: data.attachments,
     };
     
     setMessages(prev => [...prev, userMessage]);
@@ -44,6 +51,7 @@ export default function ChatPanel() {
       .join('\n');
       
     try {
+      // TODO: Pass attachments to the AI flow
       const result = await generateResponse({
         conversationHistory: conversationHistory,
         userInput: data.message,
@@ -67,6 +75,28 @@ export default function ChatPanel() {
       setIsResponding(false);
     }
   };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      const newAttachments = Array.from(files).map(file => ({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        preview: URL.createObjectURL(file),
+        file: file,
+      }));
+      const currentAttachments = form.getValues('attachments');
+      form.setValue('attachments', [...currentAttachments, ...newAttachments]);
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    const currentAttachments = form.getValues('attachments');
+    const newAttachments = currentAttachments.filter((_, i) => i !== index);
+    form.setValue('attachments', newAttachments);
+  };
+
 
   const exampleQueries = [
     "What is Genkit?",
@@ -101,11 +131,13 @@ export default function ChatPanel() {
           <ChatMessages messages={messages} isResponding={isResponding} />
         )}
       </div>
-      <div className="p-4 md:p-6 bg-transparent border-t-0">
+      <div className="p-4 md:p-6 bg-transparent">
         <ChatInput
           form={form}
           onSubmit={form.handleSubmit(onSubmit)}
           isResponding={isResponding}
+          onFileChange={handleFileChange}
+          removeAttachment={removeAttachment}
         />
         <p className="text-center text-xs text-muted-foreground mt-3">
             lhihi AI can make mistakes. Consider checking important information.
