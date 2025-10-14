@@ -52,7 +52,6 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   const { user, loading } = useUser();
   const { toast } = useToast();
   const { firestore } = useFirebase();
-  const [model, setModel] = useState('alexzo');
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
 
 
@@ -164,6 +163,12 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
       throw error;
     }
   };
+  
+  const isImagePrompt = (prompt: string) => {
+      const imageKeywords = ['generate an image', 'create an image', 'draw', 'sketch', 'picture of'];
+      const lowercasedPrompt = prompt.toLowerCase();
+      return imageKeywords.some(keyword => lowercasedPrompt.includes(keyword));
+  }
 
   const onSubmit = async (data: FormValues) => {
     // If there are attachments, user must be logged in.
@@ -225,7 +230,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
     try {
       let assistantMessage: Message;
 
-      if (model === 'image-generator') {
+      if (isImagePrompt(data.message)) {
         const imageUrl = await generateImage(data.message);
         assistantMessage = {
           id: uuidv4(),
@@ -323,33 +328,9 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
           <SidebarTrigger className="md:hidden" />
         </div>
         <div className="flex-1 flex justify-center">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="px-4 py-2 text-lg font-semibold bg-gray-200 dark:bg-gray-700 hover:bg-muted/80">
-                {model === 'alexzo' ? 'Alexzo Intelligence' : 'Image Generator'}
-                <ChevronDown className="ml-2 size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onSelect={() => setModel('alexzo')}>
-                <div className="flex items-center justify-between w-full">
-                  <span>Alexzo Intelligence</span>
-                  <div className="w-5 h-5 flex items-center justify-center">
-                    {model === 'alexzo' && <Check className="size-4" />}
-                  </div>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setModel('image-generator')}>
-                <div className="flex items-center justify-between w-full">
-                  <span>Image Generator</span>
-                  <div className="w-5 h-5 flex items-center justify-center">
-                    {model === 'image-generator' && <Check className="size-4" />}
-                  </div>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled>Coming Soon</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            <div className="px-4 py-2 text-lg font-semibold bg-gray-200 dark:bg-gray-700 rounded-md">
+                Alexzo Intelligence
+            </div>
         </div>
         <div className="flex items-center gap-2">
             <DropdownMenu>
