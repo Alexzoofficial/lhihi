@@ -1,38 +1,48 @@
 'use server';
 
 /**
- * @fileOverview A tool for fetching content from a web page.
+ * @fileOverview A tool for fetching content from a web page using Google Custom Search.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
+const GOOGLE_API_KEY = "AIzaSyCOJPh3Iu5TUblfBtCnccP619T0X7nMxpw"; 
+const SEARCH_ENGINE_ID = "10ab81e2a2a654f90";
+
 export const getPageContent = ai.defineTool(
   {
     name: 'getPageContent',
-    description: 'Fetches and returns the text content of a given URL. Use this tool when the user provides a URL and asks for a summary or information about it.',
+    description: 'Searches the web using Google for a given query and returns a summary of the top results. Use this for questions about current events, facts, or any topic that requires up-to-date information.',
     inputSchema: z.object({
-      url: z.string().url().describe('The URL of the webpage to fetch.'),
+      query: z.string().describe('The search query.'),
     }),
-    outputSchema: z.string().describe('The main text content of the webpage.'),
+    outputSchema: z.string().describe('A summary of the top 5 search results, formatted as a string including titles, snippets, and links.'),
   },
   async (input) => {
     try {
-      const response = await fetch(input.url);
+      const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${SEARCH_ENGINE_ID}&q=${encodeURIComponent(input.query)}&num=5`;
+      const response = await fetch(url);
+
       if (!response.ok) {
-        return `Error: Could not fetch the page. Status code: ${response.status}`;
+        return `Error: Could not fetch search results. Status code: ${response.status}`;
       }
       
-      // For simplicity, we are returning a placeholder for page content.
-      // A real implementation would parse the HTML and extract the main content.
-      // This is a complex task involving libraries like Cheerio or JSDOM.
-      // This placeholder will allow the LLM to "act" like it has read the page.
-      const textContent = `Successfully fetched content from ${input.url}. The content is about... (developer: this is a placeholder response. A real implementation would parse HTML to extract text).`;
+      const data = await response.json();
+
+      if (!data.items || data.items.length === 0) {
+        return "No relevant results found for your query.";
+      }
       
-      return textContent;
+      const searchResults = data.items.map((item: any, idx: number) => (
+        `${idx + 1}. Title: ${item.title}\n   URL: ${item.link}\n   Snippet: ${item.snippet}`
+      )).join('\n\n');
+
+      return `Here are the top search results:\n${searchResults}`;
+
     } catch (error) {
       console.error('Error fetching page content:', error);
-      return 'Error: Failed to fetch or process the webpage.';
+      return 'Error: Failed to fetch or process the web search results.';
     }
   }
 );
