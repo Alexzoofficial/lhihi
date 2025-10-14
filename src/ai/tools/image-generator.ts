@@ -16,14 +16,13 @@ export const generateImage = ai.defineTool(
       width: z.number().optional().describe('The width of the image to generate. Defaults to 512.'),
       height: z.number().optional().describe('The height of the image to generate. Defaults to 512.'),
     }),
-    outputSchema: z.string().describe('The URL of the generated image.'),
+    outputSchema: z.string().describe('A formatted string with the URL of the generated image, like :::image[https://...-url-of-image]:::'),
   },
   async (input) => {
     try {
       const width = input.width || 512;
       const height = input.height || 512;
 
-      console.log(`Generating image with prompt: ${input.prompt}, width: ${width}, height: ${height}`);
       const response = await fetch('https://alexzo.vercel.app/api/generate', {
         method: 'POST',
         headers: {
@@ -40,22 +39,21 @@ export const generateImage = ai.defineTool(
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Error generating image:', errorText);
-        return `Error: Failed to generate the image. API returned status ${response.status}.`;
+        return `Error: Failed to generate the image. The image generation API returned an error: ${response.status}.`;
       }
 
       const data = await response.json();
       if (data && data.data && data.data.length > 0 && data.data[0].url) {
         const imageUrl = data.data[0].url;
-        console.log('Image generated successfully:', imageUrl);
-        return imageUrl;
+        return `:::image[${imageUrl}]:::`;
       } else {
         console.error('Error generating image: Invalid API response format.');
-        return 'Error: Failed to parse the image from the response.';
+        return 'Error: Failed to parse the image URL from the API response.';
       }
       
     } catch (error) {
       console.error('Error generating image:', error);
-      return 'Error: Failed to generate the image. Please try again with a different prompt.';
+      return 'Error: An unexpected error occurred while trying to generate the image.';
     }
   }
 );

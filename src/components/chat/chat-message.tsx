@@ -1,7 +1,7 @@
 import type { Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, Volume2, Edit, Check, MoreVertical, List, Plus, Link as LinkIcon } from 'lucide-react';
+import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, Volume2, Edit, Check, MoreVertical, List, Plus, Link as LinkIcon, LoaderCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useState, useRef } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
@@ -31,25 +31,45 @@ const CodeBlock = ({ children }: { children: string }) => {
   );
 };
 
+const GeneratingImage = () => {
+    return (
+        <div className="w-full h-96 bg-muted rounded-md my-2 flex flex-col items-center justify-center">
+            <LoaderCircle className="size-10 animate-spin text-primary" />
+            <p className="text-muted-foreground text-sm mt-2">Generating image...</p>
+        </div>
+    )
+}
+
 const renderContent = (content: string) => {
-    // Handle generated images from URL
     const imageRegex = /:::image\[(https?:\/\/[^\]]+)\]:::/g;
+    const generatingImageRegex = /:::generating_image\[([^\]]+)\]:::/g;
     
     const parts: (string | React.ReactElement)[] = [];
     let lastIndex = 0;
     
-    content.replace(imageRegex, (match, imageUrl, offset) => {
-        // Push the text before the image
-        if (offset > lastIndex) {
-            parts.push(content.substring(lastIndex, offset));
-        }
-        // Push the image element
-        parts.push(<Image key={offset} src={imageUrl} alt="Generated image" width={512} height={512} className="rounded-md my-2" />);
-        lastIndex = offset + match.length;
-        return match;
-    });
+    let result;
+    const combinedRegex = new RegExp(`${imageRegex.source}|${generatingImageRegex.source}`, 'g');
 
-    // Push any remaining text after the last image
+    while ((result = combinedRegex.exec(content)) !== null) {
+      const match = result[0];
+      const imageUrl = result[1];
+      const isGenerating = result[2] !== undefined;
+      const offset = result.index;
+
+      if (offset > lastIndex) {
+        parts.push(content.substring(lastIndex, offset));
+      }
+
+      if (isGenerating) {
+        parts.push(<GeneratingImage key={offset} />);
+      } else if (imageUrl) {
+        parts.push(<Image key={offset} src={imageUrl} alt="Generated image" width={512} height={512} className="rounded-md my-2" />);
+      }
+      
+      lastIndex = offset + match.length;
+    }
+
+    // Push any remaining text after the last match
     if (lastIndex < content.length) {
         parts.push(content.substring(lastIndex));
     }
@@ -72,34 +92,13 @@ const renderText = (content: string) => {
         }
         return null;
       }
-      // Process bold text and lists
+      // Process bold text
       const boldAndListParts = part.split(/(\*\*.*?\*\*)/g);
       return boldAndListParts.map((subPart, subIndex) => {
         if (subPart.startsWith('**') && subPart.endsWith('**')) {
           return <strong key={subIndex}>{subPart.slice(2, -2)}</strong>;
         }
-        // Split by newlines and handle list items
-        const lines = subPart.split('\n').map((line, lineIndex) => {
-            const trimmedLine = line.trim();
-            if (trimmedLine.startsWith('- ')) {
-                return <li key={lineIndex}>{trimmedLine.substring(2)}</li>;
-            }
-            if (lineIndex < subPart.split('\n').length - 1) {
-              return <span key={lineIndex}>{line}<br /></span>;
-            }
-            return <span key={lineIndex}>{line}</span>;
-        });
-
-        const listItems = lines.filter(line => (line.props as any).children?.[0]?.type === 'li');
-        const otherItems = lines.filter(line => (line.props as any).children?.[0]?.type !== 'li');
-
-        return (
-          <div key={subIndex}>
-            {otherItems}
-            {listItems.length > 0 && <ul className="list-disc list-inside my-2">{listItems}</ul>}
-          </div>
-        );
-
+        return <span key={subIndex}>{subPart}</span>;
       });
     }).filter(Boolean);
 };
@@ -115,7 +114,7 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
 
   const handleCopy = () => {
     if (content) {
-      navigator.clipboard.writeText(content).then(() => {
+      navigator.clipboard.writeText(content.replace(/:+:generating_image\[.*?\]:+:/g, '')).then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       });
@@ -153,11 +152,11 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
   };
 
   return (
-    <div className={cn("flex w-full items-start gap-4", isUser ? "justify-end" : "justify-start")}>
-      <div className={cn("group flex flex-col gap-1 max-w-[85%]", isUser ? "items-end" : "items-start")}>
+    <div className={cn("flex w-full items-start gap-4", isUser ? "flex-row-reverse" : "flex-row")}>
+      <div className={cn("group flex flex-col gap-1 w-full", isUser ? "items-end" : "items-start")}>
         <div 
           className={cn(
-            "p-3 rounded-2xl", 
+            "p-3 rounded-2xl max-w-[85%]", 
             isUser 
               ? "bg-muted text-foreground rounded-br-none" 
               : "bg-transparent rounded-bl-none"
@@ -187,7 +186,7 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
             </div>
           )}
         </div>
-        {!isUser && (
+        {!isUser && content && (
             <div className="flex items-center gap-2 transition-opacity opacity-100 group-hover:opacity-100">
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy}>
                     {copied ? <Check className="size-4 text-primary" /> : <Copy className="size-4" />}
@@ -230,7 +229,7 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
         )}
 
         {!isUser && relatedQueries && relatedQueries.length > 0 && (
-          <div className="mt-4 w-full">
+          <div className="mt-4 w-full max-w-[85%]">
             <div className="flex items-center gap-2 mb-2">
               <List className="size-4 text-muted-foreground" />
               <h3 className="text-sm font-semibold">Related</h3>
@@ -250,7 +249,7 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
           </div>
         )}
 
-        {isUser && (
+        {isUser && content && (
              <div className="flex items-center gap-2 transition-opacity opacity-0 group-hover:opacity-100">
                 <Button variant="ghost" size="icon" className="h-7 w-7">
                     <Edit className="size-4" />

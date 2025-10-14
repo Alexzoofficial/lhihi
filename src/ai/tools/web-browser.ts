@@ -7,7 +7,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
-const GOOGLE_API_KEY = "AIzaSyCOJPh3Iu5TUblfBtCnccP619T0X7nMxpw"; 
+const GOOGLE_API_KEY = "AIzaSyB_5sI5Vf-w5g3e4r4t3w2e1f"; 
 const SEARCH_ENGINE_ID = "10ab81e2a2a654f90";
 
 export const getPageContent = ai.defineTool(
