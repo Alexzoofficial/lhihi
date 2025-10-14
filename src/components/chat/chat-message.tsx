@@ -188,7 +188,7 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2 transition-opacity opacity-100 group-hover:opacity-100 text-muted-foreground">
+        <div className="flex items-center gap-2 transition-opacity opacity-100 group-hover:opacity-100">
             {isUser ? (
                 <>
                     <Button variant="ghost" size="icon" className="h-7 w-7">
