@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useEffect, useState } from 'react';
-import { collection, query, onSnapshot, orderBy, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, doc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
 
 interface Chat {
     id: string;
@@ -51,10 +51,17 @@ export function ChatSidebarContent({ onChatSelect, currentChatId, onNewChat }: {
         name: doc.data().name,
       }));
       setChats(newChats);
+    }, (error) => {
+        console.error("Error fetching chats:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not fetch chat list.",
+        });
     });
 
     return () => unsubscribe();
-  }, [firestore, user]);
+  }, [firestore, user, toast]);
 
   const handleLogin = async () => {
     try {
@@ -95,18 +102,27 @@ export function ChatSidebarContent({ onChatSelect, currentChatId, onNewChat }: {
   const deleteChat = async (chatIdToDelete: string) => {
       if (!firestore || !user) return;
       
-      const messagesQuery = query(collection(firestore, `users/${user.uid}/chats/${chatIdToDelete}/messages`));
-      const messagesSnapshot = await getDocs(messagesQuery);
-      const batch = writeBatch(firestore);
-      messagesSnapshot.forEach(doc => {
-          batch.delete(doc.ref);
-      });
-      await batch.commit();
+      try {
+        const messagesQuery = query(collection(firestore, `users/${user.uid}/chats/${chatIdToDelete}/messages`));
+        const messagesSnapshot = await getDocs(messagesQuery);
+        const batch = writeBatch(firestore);
+        messagesSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
 
-      await deleteDoc(doc(firestore, `users/${user.uid}/chats`, chatIdToDelete));
-      toast({ title: 'Chat deleted' });
-      if (currentChatId === chatIdToDelete) {
-        onNewChat();
+        await deleteDoc(doc(firestore, `users/${user.uid}/chats`, chatIdToDelete));
+        toast({ title: 'Chat deleted' });
+        if (currentChatId === chatIdToDelete) {
+          onNewChat();
+        }
+      } catch (error) {
+        console.error("Error deleting chat:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not delete chat.",
+        });
       }
   };
 
@@ -184,7 +200,7 @@ export function ChatSidebarContent({ onChatSelect, currentChatId, onNewChat }: {
                   <span className='truncate'>{user.displayName}</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 w-full" onClick={handleLogin}>
+                <div className="flex items-center gap-2 w-full">
                   <UserIcon className="size-5" />
                   <span>Log in</span>
                 </div>
@@ -194,7 +210,7 @@ export function ChatSidebarContent({ onChatSelect, currentChatId, onNewChat }: {
           <DropdownMenuContent className="w-[var(--sidebar-width)] mb-2" side="top" align="start">
             {user ? (
               <>
-                <DropdownMenuItem>
+                <DropdownMenuItem disabled>
                   <Settings className="mr-2 size-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>
@@ -216,3 +232,5 @@ export function ChatSidebarContent({ onChatSelect, currentChatId, onNewChat }: {
     </>
   );
 }
+
+    

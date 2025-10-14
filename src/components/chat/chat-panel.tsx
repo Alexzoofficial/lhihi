@@ -11,7 +11,7 @@ import { ChatInput } from './chat-input';
 import { LhihiLogo } from '../icons';
 import { Button } from '../ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { ChevronDown, UserIcon } from 'lucide-react';
+import { Check, ChevronDown, UserIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,13 +19,17 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
 import { useUser, useFirebase } from '@/firebase';
 import { signInWithGoogle, signOutWithGoogle } from '@/firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAuth } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
-import { addDoc, collection, serverTimestamp, onSnapshot, query, where, orderBy, doc, getDoc, deleteDoc } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { v4 as uuidv4 } from 'uuid';
+
 
 const formSchema = z
   .object({
@@ -45,6 +49,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   const { user, loading } = useUser();
   const { toast } = useToast();
   const { firestore } = useFirebase();
+  const [model, setModel] = useState('alexzo');
 
   useEffect(() => {
     if (!firestore || !user || !currentChatId) {
@@ -54,19 +59,29 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
 
     const messagesQuery = query(
       collection(firestore, `users/${user.uid}/chats/${currentChatId}/messages`),
-      orderBy('createdAt')
+      orderBy('createdAt', 'asc')
     );
 
     const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-      const newMessages = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      } as Message));
+      const newMessages: Message[] = [];
+      snapshot.forEach((doc) => {
+        newMessages.push({
+          id: doc.id,
+          ...doc.data(),
+        } as Message);
+      });
       setMessages(newMessages);
+    }, (error) => {
+        console.error("Error fetching messages:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not fetch chat history.",
+        });
     });
 
     return () => unsubscribe();
-  }, [firestore, user, currentChatId]);
+  }, [firestore, user, currentChatId, toast]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -114,67 +129,88 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   };
 
   const onSubmit = async (data: FormValues) => {
-    if (!user || !firestore) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'You must be logged in to send a message.',
-      });
-      return;
-    }
-    
     setIsResponding(true);
 
-    let newChatId = currentChatId;
-    if (!newChatId) {
-      const chatRef = await addDoc(collection(firestore, `users/${user.uid}/chats`), {
-        name: data.message.substring(0, 30),
-        createdAt: serverTimestamp(),
-      });
-      newChatId = chatRef.id;
-      setCurrentChatId(newChatId);
-    }
-    
-    const userMessage: Omit<Message, 'id'> = {
+    const userMessage: Message = {
+      id: uuidv4(),
       role: 'user',
       content: data.message,
       attachments: data.attachments,
-      createdAt: serverTimestamp(),
+      createdAt: new Date(),
     };
-    
-    if (newChatId) {
-      const messagesCol = collection(firestore, `users/${user.uid}/chats/${newChatId}/messages`);
-      await addDoc(messagesCol, userMessage);
-      
-      form.reset();
 
-      const conversationHistory = [...messages, {...userMessage, id: 'temp'}]
-        .map((msg) => `${msg.role}: ${msg.content}`)
-        .join('\n');
+    const currentMessages = [...messages, userMessage];
+    setMessages(currentMessages);
+    form.reset();
 
-      try {
-        const result = await generateResponse({
-          conversationHistory: conversationHistory,
-          userInput: data.message,
-        });
+    let activeChatId = currentChatId;
 
-        const assistantMessage: Omit<Message, 'id'> = {
-          role: 'assistant',
-          content: result.response,
-          createdAt: serverTimestamp(),
-        };
-        await addDoc(messagesCol, assistantMessage);
-      } catch (error) {
-        console.error('Error generating response:', error);
-        const errorMessage: Omit<Message, 'id'> = {
-          role: 'assistant',
-          content: 'Sorry, I encountered an error. Please try again.',
-          createdAt: serverTimestamp(),
-        };
-        await addDoc(messagesCol, errorMessage);
-      } finally {
-        setIsResponding(false);
+    if (user && firestore) {
+      if (!activeChatId) {
+        try {
+          const chatRef = await addDoc(collection(firestore, `users/${user.uid}/chats`), {
+            name: data.message.substring(0, 30),
+            createdAt: serverTimestamp(),
+          });
+          activeChatId = chatRef.id;
+          setCurrentChatId(activeChatId);
+        } catch (error) {
+            console.error("Error creating new chat:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not create new chat.' });
+            setIsResponding(false);
+            return;
+        }
       }
+    }
+
+    if (user && firestore && activeChatId) {
+        try {
+            await addDoc(collection(firestore, `users/${user.uid}/chats/${activeChatId}/messages`), {
+                ...userMessage,
+                createdAt: serverTimestamp() // Use server timestamp for Firestore
+            });
+        } catch (error) {
+            console.error("Error saving user message:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not save your message.' });
+        }
+    }
+
+    const conversationHistory = currentMessages
+      .map((msg) => `${msg.role}: ${msg.content}`)
+      .join('\n');
+
+    try {
+      const result = await generateResponse({
+        conversationHistory: conversationHistory,
+        userInput: data.message,
+      });
+
+      const assistantMessage: Message = {
+        id: uuidv4(),
+        role: 'assistant',
+        content: result.response,
+        createdAt: new Date(),
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+
+      if (user && firestore && activeChatId) {
+        await addDoc(collection(firestore, `users/${user.uid}/chats/${activeChatId}/messages`), {
+            ...assistantMessage,
+            createdAt: serverTimestamp() // Use server timestamp for Firestore
+        });
+      }
+    } catch (error) {
+      console.error('Error generating response:', error);
+      const errorMessage: Message = {
+        id: uuidv4(),
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.',
+        createdAt: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsResponding(false);
     }
   };
 
@@ -200,37 +236,37 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   };
 
   const exampleQueries = [
-    'What is Genkit?',
-    'Explain the importance of AI in modern applications.',
-    'How do Next.js server components work?',
-    'Write a poem about coding.',
+    'Create a futuristic story about AI and humanity',
+    'Explain quantum computing like I\'m five',
+    'Plan a 3-day itinerary for a trip to Tokyo',
+    'Write a Python script to scrape a website',
   ];
   
   const onExampleQueryClick = (query: string) => {
     form.setValue('message', query);
-    // Directly call onSubmit without form wrapper
-    onSubmit({ message: query, attachments: [] });
+    form.handleSubmit(onSubmit)();
   };
-
 
   return (
     <main className="flex flex-col h-full max-h-screen">
-       <header className="flex items-center justify-between p-2 border-b md:hidden">
-        <SidebarTrigger />
-        <div className="flex-1 text-center">
+      <header className="flex items-center justify-between p-2 border-b">
+        <div className="flex items-center gap-2">
+            <SidebarTrigger className="md:hidden" />
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="px-4 py-2 text-lg font-semibold">
-                  Alexzo Intelligence
-                  <ChevronDown className="ml-2 size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuLabel>Select a model</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Alexzo Intelligence</DropdownMenuItem>
-                <DropdownMenuItem disabled>Coming Soon</DropdownMenuItem>
-              </DropdownMenuContent>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="px-4 py-2 text-lg font-semibold bg-muted hover:bg-muted/80">
+                        Alexzo Intelligence
+                        <ChevronDown className="ml-2 size-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    <DropdownMenuRadioGroup value={model} onValueChange={setModel}>
+                        <DropdownMenuRadioItem value="alexzo">
+                            Alexzo Intelligence
+                        </DropdownMenuRadioItem>
+                        <DropdownMenuItem disabled>Coming Soon</DropdownMenuItem>
+                    </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
             </DropdownMenu>
         </div>
         <DropdownMenu>
@@ -246,9 +282,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
                   </AvatarFallback>
                 </Avatar>
               ) : (
-                <div onClick={handleLogin}>
-                  <UserIcon className="size-5" />
-                </div>
+                <UserIcon className="size-5" />
               )}
             </Button>
           </DropdownMenuTrigger>
@@ -257,8 +291,8 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
               <>
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Settings</DropdownMenuItem>
+                <DropdownMenuItem disabled>Profile</DropdownMenuItem>
+                <DropdownMenuItem disabled>Settings</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
               </>
@@ -280,22 +314,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
                   How can I help you today?
                 </h1>
             </div>
-             <div className="hidden md:block mt-4 mb-8">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="px-4 py-2 bg-muted hover:bg-muted/80">
-                    Alexzo Intelligence
-                    <ChevronDown className="ml-2 size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuLabel>Select a model</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>Alexzo Intelligence</DropdownMenuItem>
-                  <DropdownMenuItem disabled>Coming Soon</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-3xl mt-12">
               {exampleQueries.map((query) => (
                 <Button
@@ -328,3 +347,5 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
     </main>
   );
 }
+
+    

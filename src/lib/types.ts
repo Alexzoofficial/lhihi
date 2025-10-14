@@ -13,5 +13,7 @@ export type Message = {
   role: "user" | "assistant";
   content: string;
   attachments?: Attachment[];
-  createdAt: FieldValue;
+  createdAt: FieldValue | Date;
 };
+
+    
