@@ -31,6 +31,7 @@ import { addDoc, collection, serverTimestamp, onSnapshot, query, orderBy } from 
 import { v4 as uuidv4 } from 'uuid';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { GoogleIcon } from '../icons';
+import Image from 'next/image';
 
 
 const formSchema = z
@@ -137,6 +138,33 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
     }
   };
 
+  const generateImage = async (prompt: string): Promise<string> => {
+    try {
+      const response = await fetch('https://alexzo.vercel.app/api/generate', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer alexzo_1h5r0ouy12jeyun6f83cda',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          width: 512,
+          height: 512
+        })
+      });
+  
+      if (!response.ok) {
+        throw new Error(`Image generation failed with status: ${response.status}`);
+      }
+  
+      const data = await response.json();
+      return data.data[0].url;
+    } catch (error) {
+      console.error('Error generating image:', error);
+      throw error;
+    }
+  };
+
   const onSubmit = async (data: FormValues) => {
     // If there are attachments, user must be logged in.
     if (data.attachments.length > 0 && !user) {
@@ -195,23 +223,44 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
       .join('\n');
 
     try {
-      const result = await generateResponse({
-        conversationHistory: conversationHistory,
-        userInput: data.message,
-      });
+      let assistantMessage: Message;
 
-      const assistantMessage: Message = {
-        id: uuidv4(),
-        role: 'assistant',
-        content: result.response,
-        createdAt: new Date(),
-      };
+      if (model === 'image-generator') {
+        const imageUrl = await generateImage(data.message);
+        assistantMessage = {
+          id: uuidv4(),
+          role: 'assistant',
+          content: `Here is the image you requested for: "${data.message}"`,
+          attachments: [{
+            name: 'generated-image.png',
+            type: 'image/png',
+            size: 0, 
+            preview: imageUrl,
+            file: null as any
+          }],
+          createdAt: new Date(),
+        };
+      } else {
+        const result = await generateResponse({
+          conversationHistory: conversationHistory,
+          userInput: data.message,
+        });
+
+        assistantMessage = {
+          id: uuidv4(),
+          role: 'assistant',
+          content: result.response,
+          createdAt: new Date(),
+        };
+      }
+
 
       setMessages(prev => [...prev, assistantMessage]);
 
       if (user && firestore && activeChatId) {
         await addDoc(collection(firestore, `users/${user.uid}/chats/${activeChatId}/messages`), {
             ...assistantMessage,
+            attachments: assistantMessage.attachments ? assistantMessage.attachments.map(a => ({...a, file: null})) : [], // Don't save file object to Firestore
             createdAt: serverTimestamp() // Use server timestamp for Firestore
         });
       }
@@ -274,28 +323,34 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
           <SidebarTrigger className="md:hidden" />
         </div>
         <div className="flex-1 flex justify-center">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="px-4 py-2 text-lg font-semibold bg-gray-200 dark:bg-gray-700 hover:bg-muted/80">
-                  Alexzo Intelligence
-                  <ChevronDown className="ml-2 size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuRadioGroup value={model} onValueChange={setModel}>
-                  <DropdownMenuRadioItem value="alexzo">
-                    <div className="flex items-center justify-between w-full">
-                      <span>Alexzo Intelligence</span>
-                      <div className="w-5 h-5 flex items-center justify-center">
-                        {model === 'alexzo' && <div className="w-2.5 h-2.5 rounded-full bg-foreground" />}
-                      </div>
-                    </div>
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuItem disabled>Coming Soon</DropdownMenuItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="px-4 py-2 text-lg font-semibold bg-gray-200 dark:bg-gray-700 hover:bg-muted/80">
+                {model === 'alexzo' ? 'Alexzo Intelligence' : 'Image Generator'}
+                <ChevronDown className="ml-2 size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onSelect={() => setModel('alexzo')}>
+                <div className="flex items-center justify-between w-full">
+                  <span>Alexzo Intelligence</span>
+                  <div className="w-5 h-5 flex items-center justify-center">
+                    {model === 'alexzo' && <Check className="size-4" />}
+                  </div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setModel('image-generator')}>
+                <div className="flex items-center justify-between w-full">
+                  <span>Image Generator</span>
+                  <div className="w-5 h-5 flex items-center justify-center">
+                    {model === 'image-generator' && <Check className="size-4" />}
+                  </div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled>Coming Soon</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

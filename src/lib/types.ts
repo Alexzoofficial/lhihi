@@ -5,7 +5,7 @@ export type Attachment = {
   type: string;
   size: number;
   preview: string;
-  file: File;
+  file: File | null;
 };
 
 export type Message = {
@@ -15,5 +15,3 @@ export type Message = {
   attachments?: Attachment[];
   createdAt: FieldValue | Date;
 };
-
-    
