@@ -2,7 +2,7 @@
 import type { Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, Volume2, Edit, Check, MoreVertical } from 'lucide-react';
+import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, Volume2, Edit, Check, MoreVertical, List, Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useState, useRef } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
@@ -106,7 +106,7 @@ const renderText = (content: string) => {
 };
 
 
-export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl }: Message & { onRegenerate?: () => void; audioUrl?: string; }) {
+export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl, relatedQueries, onSelectQuery }: Message) {
   const isUser = role === 'user';
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState(false);
@@ -188,49 +188,70 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2 transition-opacity opacity-100 group-hover:opacity-100">
-            {isUser ? (
-                <>
+        {!isUser && (
+            <div className="flex items-center gap-2 transition-opacity opacity-100 group-hover:opacity-100">
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy}>
+                    {copied ? <Check className="size-4 text-current" /> : <Copy className="size-4" />}
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleLike}>
+                    <ThumbsUp className={cn("size-4", liked && "fill-current")} />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleDislike}>
+                    <ThumbsDown className={cn("size-4", disliked && "fill-current")} />
+                </Button>
+                {onRegenerate && (
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRegenerate}>
+                        <RefreshCw className="size-4" />
+                    </Button>
+                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <Edit className="size-4" />
+                      <MoreVertical className="size-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy}>
-                        {copied ? <Check className="size-4 text-current" /> : <Copy className="size-4" />}
-                    </Button>
-                </>
-            ) : (
-                <>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy}>
-                       {copied ? <Check className="size-4 text-current" /> : <Copy className="size-4" />}
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleLike}>
-                        <ThumbsUp className={cn("size-4", liked && "fill-current")} />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleDislike}>
-                        <ThumbsDown className={cn("size-4", disliked && "fill-current")} />
-                    </Button>
-                    {onRegenerate && (
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRegenerate}>
-                            <RefreshCw className="size-4" />
-                        </Button>
-                    )}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                          <MoreVertical className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onClick={handleSpeak} disabled={isPlaying || !audioUrl}>
-                          <Volume2 className="mr-2 size-4" />
-                          <span>Speak</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <audio ref={audioRef} src={audioUrl} preload="auto" className="hidden" />
-                </>
-            )}
-        </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={handleSpeak} disabled={isPlaying || !audioUrl}>
+                      <Volume2 className="mr-2 size-4" />
+                      <span>Speak</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <audio ref={audioRef} src={audioUrl} preload="auto" className="hidden" />
+            </div>
+        )}
+
+        {!isUser && relatedQueries && relatedQueries.length > 0 && (
+          <div className="mt-4 w-full">
+            <div className="flex items-center gap-2 mb-2">
+              <List className="size-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold">Related</h3>
+            </div>
+            <div className="flex flex-col gap-2">
+              {relatedQueries.map((query, index) => (
+                <button
+                  key={index}
+                  onClick={() => onSelectQuery?.(query)}
+                  className="flex items-center justify-between text-left p-2 rounded-md border text-sm hover:bg-accent"
+                >
+                  <span>{query}</span>
+                  <Plus className="size-4 text-muted-foreground" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {isUser && (
+             <div className="flex items-center gap-2 transition-opacity opacity-0 group-hover:opacity-100">
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <Edit className="size-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy}>
+                    {copied ? <Check className="size-4 text-current" /> : <Copy className="size-4" />}
+                </Button>
+            </div>
+        )}
       </div>
     </div>
   );

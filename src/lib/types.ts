@@ -16,5 +16,7 @@ export type Message = {
   attachments?: Attachment[];
   createdAt: FieldValue | Date;
   onRegenerate?: () => void;
+  onSelectQuery?: (query: string) => void;
   audioUrl?: string;
+  relatedQueries?: string[];
 };

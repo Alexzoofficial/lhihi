@@ -150,6 +150,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
           id: uuidv4(),
           role: 'assistant',
           content: result.response,
+          relatedQueries: result.relatedQueries,
           createdAt: new Date(),
         };
 
@@ -294,6 +295,11 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
     
     setIsResponding(false);
   };
+  
+  const handleSelectQuery = (query: string) => {
+    form.setValue('message', query);
+    form.handleSubmit(onSubmit)();
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!user) {
@@ -417,7 +423,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
             </div>
           </div>
         ) : (
-          <ChatMessages messages={messages} isResponding={isResponding} onRegenerate={handleRegenerate} />
+          <ChatMessages messages={messages} isResponding={isResponding} onRegenerate={handleRegenerate} onSelectQuery={handleSelectQuery} />
         )}
       </div>
       <div className="p-4 md:p-6 bg-transparent">

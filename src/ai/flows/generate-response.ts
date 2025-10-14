@@ -23,6 +23,7 @@ export type GenerateResponseInput = z.infer<typeof GenerateResponseInputSchema>;
 
 const GenerateResponseOutputSchema = z.object({
   response: z.string().describe('The generated text response.'),
+  relatedQueries: z.array(z.string()).optional().describe('A list of 3-4 related questions the user might ask next.'),
 });
 
 export type GenerateResponseOutput = z.infer<typeof GenerateResponseOutputSchema>;
@@ -74,6 +75,7 @@ You are Lhihi AI, a helpful and friendly AI system developed by Alexzo using the
 - If the user provides a URL, use the getPageContent tool to fetch the content and summarize it or answer questions about it.
 - If the user asks to generate, create, or draw an image, use the generateImage tool. The tool will return a public URL to an image. You should then output this URL directly in your response, wrapped in a special format like this: :::image[https://...]:::
 - For queries, break them down and provide the best possible, well-structured answer. For casual chat, follow the personality guidelines to be a good conversationalist.
+- After providing an informational response (not a casual chat), generate a list of 3-4 'relatedQueries' that the user might be interested in asking next. These should be insightful and relevant to the topic. Do not generate related queries for casual conversation.
 - Ensure the final answer fully addresses all aspects of the user's message.
 </planning_rules>
 

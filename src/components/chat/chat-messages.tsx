@@ -8,14 +8,15 @@ interface ChatMessagesProps {
   messages: Message[];
   isResponding: boolean;
   onRegenerate: (messageIndex: number) => void;
+  onSelectQuery: (query: string) => void;
 }
 
-export function ChatMessages({ messages, isResponding, onRegenerate }: ChatMessagesProps) {
+export function ChatMessages({ messages, isResponding, onRegenerate, onSelectQuery }: ChatMessagesProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+      scrollAreaRef.current.scrollTop = scrollArea.current.scrollHeight;
     }
   }, [messages, isResponding]);
 
@@ -27,6 +28,7 @@ export function ChatMessages({ messages, isResponding, onRegenerate }: ChatMessa
               key={message.id}
               {...message}
               onRegenerate={message.role === 'assistant' ? () => onRegenerate(index) : undefined}
+              onSelectQuery={onSelectQuery}
             />
         ))}
         {isResponding && (
