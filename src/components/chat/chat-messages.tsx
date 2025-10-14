@@ -9,9 +9,10 @@ import { Avatar, AvatarFallback } from '../ui/avatar';
 interface ChatMessagesProps {
   messages: Message[];
   isResponding: boolean;
+  onRegenerate: (messageIndex: number) => void;
 }
 
-export function ChatMessages({ messages, isResponding }: ChatMessagesProps) {
+export function ChatMessages({ messages, isResponding, onRegenerate }: ChatMessagesProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -23,8 +24,12 @@ export function ChatMessages({ messages, isResponding }: ChatMessagesProps) {
   return (
     <div className="py-6 md:py-10">
         <div className="space-y-4 max-w-3xl mx-auto w-full px-4" ref={scrollAreaRef}>
-        {messages.map((message) => (
-            <ChatMessage key={message.id} {...message} />
+        {messages.map((message, index) => (
+            <ChatMessage
+              key={message.id}
+              {...message}
+              onRegenerate={message.role === 'assistant' ? () => onRegenerate(index) : undefined}
+            />
         ))}
         {isResponding && (
             <div className="flex items-start gap-4">

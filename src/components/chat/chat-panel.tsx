@@ -137,43 +137,68 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
       });
     }
   };
+  
+  const processResponse = async (userMessageContent: string, conversationHistory: Message[]) => {
+    const historyString = conversationHistory
+      .map((msg) => `${msg.role}: ${msg.content}`)
+      .join('\n');
 
-  const generateImage = async (prompt: string): Promise<string> => {
     try {
-      const response = await fetch('https://alexzo.vercel.app/api/generate', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer alexzo_1h5r0ouy12jeyun6f83cda',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          prompt: prompt,
-          width: 512,
-          height: 512
-        })
-      });
-  
-      if (!response.ok) {
-        throw new Error(`Image generation failed with status: ${response.status}`);
-      }
-  
-      const data = await response.json();
-      if (data && data.data && data.data[0] && data.data[0].url) {
-        return data.data[0].url;
-      }
-      throw new Error('Invalid response from image generation API');
+        const result = await generateResponse({
+          conversationHistory: historyString,
+          userInput: userMessageContent,
+        });
+
+        const assistantMessage: Message = {
+          id: uuidv4(),
+          role: 'assistant',
+          content: result.response,
+          createdAt: new Date(),
+        };
+
+      return assistantMessage;
+
     } catch (error) {
-      console.error('Error generating image:', error);
-      throw error;
+      console.error('Error generating response:', error);
+      const errorMessage: Message = {
+        id: uuidv4(),
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.',
+        createdAt: new Date(),
+      };
+      return errorMessage;
     }
   };
-  
-  const isImagePrompt = (prompt: string) => {
-      const imageKeywords = ['generate an image', 'create an image', 'draw', 'sketch', 'picture of'];
-      const lowercasedPrompt = prompt.toLowerCase();
-      return imageKeywords.some(keyword => lowercasedPrompt.includes(keyword));
-  }
 
+  const handleRegenerate = async (messageIndex: number) => {
+    const messagesToResend = messages.slice(0, messageIndex);
+    const lastUserMessage = messagesToResend.filter(m => m.role === 'user').pop();
+
+    if (!lastUserMessage) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not find a user message to regenerate.' });
+        return;
+    }
+
+    setIsResponding(true);
+    setMessages(prev => prev.slice(0, messageIndex)); // Remove the old assistant response
+
+    const assistantMessage = await processResponse(lastUserMessage.content, messagesToResend);
+    
+    setMessages(prev => [...prev, assistantMessage]);
+
+    if (user && firestore && currentChatId) {
+        // This is a simplified approach. A more robust solution would be to
+        // update the existing message or handle this logic server-side.
+        await addDoc(collection(firestore, `users/${user.uid}/chats/${currentChatId}/messages`), {
+            ...assistantMessage,
+            attachments: assistantMessage.attachments ? assistantMessage.attachments.map(a => ({...a, file: null})) : [], // Don't save file object to Firestore
+            createdAt: serverTimestamp() // Use server timestamp for Firestore
+        });
+      }
+
+    setIsResponding(false);
+  };
+  
   const onSubmit = async (data: FormValues) => {
     if (data.attachments.length > 0 && !user) {
       setIsLoginDialogOpen(true);
@@ -225,64 +250,19 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
     }
 
 
-    const conversationHistory = currentMessages
-      .map((msg) => `${msg.role}: ${msg.content}`)
-      .join('\n');
+    const assistantMessage = await processResponse(data.message, currentMessages);
 
-    try {
-      let assistantMessage: Message;
+    setMessages(prev => [...prev, assistantMessage]);
 
-      if (isImagePrompt(data.message)) {
-        const imageUrl = await generateImage(data.message);
-        assistantMessage = {
-          id: uuidv4(),
-          role: 'assistant',
-          content: `Here is the image you requested for: "${data.message}"`,
-          attachments: [{
-            name: 'generated-image.png',
-            type: 'image/png',
-            size: 0, 
-            preview: imageUrl,
-            file: null as any
-          }],
-          createdAt: new Date(),
-        };
-      } else {
-        const result = await generateResponse({
-          conversationHistory: conversationHistory,
-          userInput: data.message,
-        });
-
-        assistantMessage = {
-          id: uuidv4(),
-          role: 'assistant',
-          content: result.response,
-          createdAt: new Date(),
-        };
-      }
-
-
-      setMessages(prev => [...prev, assistantMessage]);
-
-      if (user && firestore && activeChatId) {
-        await addDoc(collection(firestore, `users/${user.uid}/chats/${activeChatId}/messages`), {
-            ...assistantMessage,
-            attachments: assistantMessage.attachments ? assistantMessage.attachments.map(a => ({...a, file: null})) : [], // Don't save file object to Firestore
-            createdAt: serverTimestamp() // Use server timestamp for Firestore
-        });
-      }
-    } catch (error) {
-      console.error('Error generating response:', error);
-      const errorMessage: Message = {
-        id: uuidv4(),
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        createdAt: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsResponding(false);
+    if (user && firestore && activeChatId) {
+      await addDoc(collection(firestore, `users/${user.uid}/chats/${activeChatId}/messages`), {
+          ...assistantMessage,
+          attachments: assistantMessage.attachments ? assistantMessage.attachments.map(a => ({...a, file: null})) : [], // Don't save file object to Firestore
+          createdAt: serverTimestamp() // Use server timestamp for Firestore
+      });
     }
+
+    setIsResponding(false);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -343,12 +323,8 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
                     Alexzo Intelligence
                     <Check className="ml-auto size-4 text-primary" />
                   </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="model-2" disabled>
-                    Coming Soon
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="model-3" disabled>
-                    Coming Soon
-                  </DropdownMenuRadioItem>
+                   <DropdownMenuItem disabled>Coming Soon</DropdownMenuItem>
+                   <DropdownMenuItem disabled>Coming Soon</DropdownMenuItem>
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -411,7 +387,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
             </div>
           </div>
         ) : (
-          <ChatMessages messages={messages} isResponding={isResponding} />
+          <ChatMessages messages={messages} isResponding={isResponding} onRegenerate={handleRegenerate} />
         )}
       </div>
       <div className="p-4 md:p-6 bg-transparent">
@@ -440,7 +416,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Button onClick={handleLogin} variant="outline" className="w-full h-12 text-base">
+            <Button onClick={handleLogin} variant="outline" className="w-full h-12 text-base bg-gray-200 hover:bg-gray-300 text-gray-800">
               <GoogleIcon className="mr-3 size-6" />
               Continue with Google
             </Button>

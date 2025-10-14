@@ -14,4 +14,5 @@ export type Message = {
   content: string;
   attachments?: Attachment[];
   createdAt: FieldValue | Date;
+  onRegenerate?: () => void;
 };
