@@ -212,8 +212,7 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuItem onClick={handleSpeak} disabled={isPlaying || !audioUrl}>
-                      <Volume2 className="mr-2 size-4" />
-                      <span>Speak</span>
+                      <Volume2 className="size-4" />
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
