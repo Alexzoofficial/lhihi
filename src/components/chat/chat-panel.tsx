@@ -29,7 +29,7 @@ import { getAuth } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { addDoc, collection, serverTimestamp, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { GoogleIcon } from '../icons';
 import Image from 'next/image';
 
@@ -429,20 +429,22 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
     </main>
 
     <Dialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-background">
-            <DialogHeader>
-                <DialogTitle className="text-center text-2xl font-bold">Log in to lhihi AI</DialogTitle>
-            </DialogHeader>
-            <div className="flex flex-col items-center gap-4 py-4">
-                 <Image src="/favicon.svg" alt="lhihi AI" width={60} height={60} />
-                <p className="text-center text-muted-foreground">
-                    To continue, please log in. This will save your chat history and allow you to use features like file attachments.
-                </p>
-                <Button onClick={handleLogin} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-                    <GoogleIcon className="mr-2 size-5" />
-                    Continue with Google
-                </Button>
+        <DialogContent className="sm:max-w-md bg-background rounded-2xl">
+          <DialogHeader className="text-center space-y-4">
+            <div className="inline-block mx-auto p-3 rounded-full bg-primary/10">
+              <LhihiLogo className="size-12 text-primary" />
             </div>
+            <DialogTitle className="text-2xl font-bold">Welcome to lhihi AI</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Log in to save your chat history and unlock more features.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Button onClick={handleLogin} variant="outline" className="w-full h-12 text-base">
+              <GoogleIcon className="mr-3 size-6" />
+              Continue with Google
+            </Button>
+          </div>
         </DialogContent>
     </Dialog>
     </>
