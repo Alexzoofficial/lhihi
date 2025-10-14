@@ -56,8 +56,12 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
 
 
   useEffect(() => {
+    if (!currentChatId) {
+      setMessages([]);
+    }
+  
     if (!firestore || !user || !currentChatId) {
-      if (!user) setMessages([]); // Clear messages if user logs out
+      if (!user && !currentChatId) setMessages([]); // Clear messages if user logs out or starts a new chat
       return;
     };
 
@@ -134,6 +138,11 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   };
 
   const onSubmit = async (data: FormValues) => {
+    if (!user) {
+      setIsLoginDialogOpen(true);
+      return;
+    }
+
     setIsResponding(true);
 
     const userMessage: Message = {
@@ -144,7 +153,6 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
       createdAt: new Date(),
     };
     
-    // Optimistically update UI
     const currentMessages = [...messages, userMessage];
     setMessages(currentMessages);
     form.reset();
@@ -220,6 +228,10 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user) {
+      setIsLoginDialogOpen(true);
+      return;
+    }
     const files = event.target.files;
     if (files) {
       const newAttachments = Array.from(files).map((file) => ({
@@ -242,12 +254,16 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
 
   const exampleQueries = [
     'Future of AI',
-    'Quantum computing basics',
-    '3-day Tokyo trip',
-    'Web scraping with Python',
+    'Quantum computing',
+    'Plan a Tokyo trip',
+    'Python web scraping',
   ];
   
   const onExampleQueryClick = (query: string) => {
+    if (!user) {
+      setIsLoginDialogOpen(true);
+      return;
+    }
     form.setValue('message', query);
     form.handleSubmit(onSubmit)();
   };
@@ -258,10 +274,11 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
       <header className="flex items-center justify-between p-2 border-b">
         <div className="flex items-center gap-2">
           <SidebarTrigger className="md:hidden" />
-          <div className="flex-1 text-center md:text-left">
+        </div>
+        <div className="flex-1 flex justify-center">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="px-4 py-2 text-lg font-semibold hover:bg-muted/80">
+                <Button variant="ghost" className="px-4 py-2 text-lg font-semibold bg-gray-200 dark:bg-gray-700 hover:bg-muted/80">
                   Alexzo Intelligence
                   <ChevronDown className="ml-2 size-4" />
                 </Button>
@@ -271,7 +288,9 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
                   <DropdownMenuRadioItem value="alexzo">
                     <div className="flex items-center justify-between w-full">
                       <span>Alexzo Intelligence</span>
-                      {model === 'alexzo' && <Check className="ml-2 size-4" />}
+                      <div className="w-5 h-5 flex items-center justify-center">
+                        {model === 'alexzo' && <div className="w-2.5 h-2.5 rounded-full bg-foreground" />}
+                      </div>
                     </div>
                   </DropdownMenuRadioItem>
                   <DropdownMenuItem disabled>Coming Soon</DropdownMenuItem>
@@ -279,38 +298,39 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" onClick={() => !user && setIsLoginDialogOpen(true)}>
-              {loading ? (
-                <div className="h-8 w-8 rounded-full bg-gray-300 animate-pulse" />
-              ) : user ? (
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? ''} />
-                  <AvatarFallback>
-                    {user.displayName?.charAt(0) ?? <UserIcon className="size-5" />}
-                  </AvatarFallback>
-                </Avatar>
-              ) : (
-                <UserIcon className="size-5" />
+        <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={() => !user && setIsLoginDialogOpen(true)}>
+                  {loading ? (
+                    <div className="h-8 w-8 rounded-full bg-gray-300 animate-pulse" />
+                  ) : user ? (
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? ''} />
+                      <AvatarFallback>
+                        {user.displayName?.charAt(0) ?? <UserIcon className="size-5" />}
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <UserIcon className="size-5" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              {user && (
+                <DropdownMenuContent>
+                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem disabled>Profile</DropdownMenuItem>
+                    <DropdownMenuItem disabled>Settings</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
+                </DropdownMenuContent>
               )}
-            </Button>
-          </DropdownMenuTrigger>
-          {user && (
-            <DropdownMenuContent>
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem disabled>Profile</DropdownMenuItem>
-                <DropdownMenuItem disabled>Settings</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
-            </DropdownMenuContent>
-           )}
-        </DropdownMenu>
+            </DropdownMenu>
+        </div>
       </header>
       <div className="flex-1 overflow-y-auto">
-        {messages.length === 0 ? (
+        {messages.length === 0 && !currentChatId ? (
           <div className="flex flex-col items-center justify-center h-full px-4 text-center">
             
             <div className="text-center">
@@ -354,12 +374,12 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
     </main>
 
     <Dialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md bg-gray-100 dark:bg-gray-800">
             <DialogHeader>
-                <DialogTitle className="text-center text-2xl">Log in to your account</DialogTitle>
+                <DialogTitle className="text-center text-2xl font-bold">Log in to lhihi AI</DialogTitle>
             </DialogHeader>
             <div className="flex flex-col items-center gap-4 py-4">
-                <Button onClick={handleLogin} className="w-full">
+                <Button onClick={handleLogin} className="w-full bg-white text-black hover:bg-gray-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600">
                     <GoogleIcon className="mr-2 size-5" />
                     Continue with Google
                 </Button>
