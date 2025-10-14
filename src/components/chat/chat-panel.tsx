@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -20,12 +20,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useUser } from '@/firebase';
+import { useUser, useFirebase } from '@/firebase';
 import { signInWithGoogle, signOutWithGoogle } from '@/firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAuth } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
-
+import { addDoc, collection, serverTimestamp, onSnapshot, query, where, orderBy, doc, getDoc } from 'firebase/firestore';
 
 const formSchema = z
   .object({
@@ -44,6 +44,30 @@ export default function ChatPanel() {
   const [isResponding, setIsResponding] = useState(false);
   const { user, loading } = useUser();
   const { toast } = useToast();
+  const { firestore } = useFirebase();
+  const [chatId, setChatId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!firestore || !user || !chatId) {
+      setMessages([]);
+      return;
+    };
+
+    const messagesQuery = query(
+      collection(firestore, `users/${user.uid}/chats/${chatId}/messages`),
+      orderBy('createdAt')
+    );
+
+    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+      const newMessages = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as Message));
+      setMessages(newMessages);
+    });
+
+    return () => unsubscribe();
+  }, [firestore, user, chatId]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -74,6 +98,8 @@ export default function ChatPanel() {
     try {
       const auth = getAuth();
       await signOutWithGoogle(auth);
+      setChatId(null);
+      setMessages([]);
       toast({
         title: 'Success',
         description: 'You have been logged out.',
@@ -89,42 +115,64 @@ export default function ChatPanel() {
   };
 
   const onSubmit = async (data: FormValues) => {
+    if (!user || !firestore) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'You must be logged in to send a message.',
+      });
+      return;
+    }
+    
     setIsResponding(true);
-    const userMessage: Message = {
-      id: Date.now().toString(),
+
+    let currentChatId = chatId;
+    // Create a new chat if one doesn't exist
+    if (!currentChatId) {
+      const chatRef = await addDoc(collection(firestore, `users/${user.uid}/chats`), {
+        name: data.message.substring(0, 30),
+        createdAt: serverTimestamp(),
+      });
+      currentChatId = chatRef.id;
+      setChatId(currentChatId);
+    }
+    
+    const userMessage: Omit<Message, 'id'> = {
       role: 'user',
       content: data.message,
       attachments: data.attachments,
+      createdAt: serverTimestamp(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const messagesCol = collection(firestore, `users/${user.uid}/chats/${currentChatId}/messages`);
+    await addDoc(messagesCol, userMessage);
+    
     form.reset();
 
-    const conversationHistory = [...messages, userMessage]
+    const conversationHistory = [...messages, {...userMessage, id: 'temp'}]
       .map((msg) => `${msg.role}: ${msg.content}`)
       .join('\n');
 
     try {
-      // TODO: Pass attachments to the AI flow
       const result = await generateResponse({
         conversationHistory: conversationHistory,
         userInput: data.message,
       });
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+      const assistantMessage: Omit<Message, 'id'> = {
         role: 'assistant',
         content: result.response,
+        createdAt: serverTimestamp(),
       };
-      setMessages((prev) => [...prev, assistantMessage]);
+      await addDoc(messagesCol, assistantMessage);
     } catch (error) {
       console.error('Error generating response:', error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
+      const errorMessage: Omit<Message, 'id'> = {
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.',
+        createdAt: serverTimestamp(),
       };
-      setMessages((prev) => [...prev, errorMessage]);
+      await addDoc(messagesCol, errorMessage);
     } finally {
       setIsResponding(false);
     }
@@ -204,7 +252,16 @@ export default function ChatPanel() {
       <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full px-4 text-center">
-            <div className="mb-8">
+            
+            <div className="text-center">
+                <div className="inline-block p-3 rounded-full bg-muted/70 mb-4">
+                  <LhihiLogo className="size-10 text-primary" />
+                </div>
+                 <h1 className="text-2xl font-semibold mb-2">
+                  How can I help you today?
+                </h1>
+            </div>
+             <div className="mt-4 mb-8">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="px-4 py-2 bg-muted hover:bg-muted/80">
@@ -219,14 +276,6 @@ export default function ChatPanel() {
                   <DropdownMenuItem disabled>Coming Soon</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
-            <div className="text-center">
-                <div className="inline-block p-3 rounded-full bg-muted/70 mb-4">
-                  <LhihiLogo className="size-10 text-primary" />
-                </div>
-                <h1 className="text-2xl font-semibold mb-2">
-                  How can I help you today?
-                </h1>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-3xl mt-12">
               {exampleQueries.map((query) => (

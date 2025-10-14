@@ -1,3 +1,5 @@
+import { FieldValue } from "firebase/firestore";
+
 export type Attachment = {
   name: string;
   type: string;
@@ -11,4 +13,5 @@ export type Message = {
   role: "user" | "assistant";
   content: string;
   attachments?: Attachment[];
+  createdAt: FieldValue;
 };

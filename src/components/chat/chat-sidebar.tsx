@@ -1,13 +1,13 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { LhihiLogo, UserIcon } from '@/components/icons';
-import { Edit, LogOut, Settings } from 'lucide-react';
+import { Edit, LogOut, Settings, Trash2 } from 'lucide-react';
 import {
   SidebarHeader,
   SidebarContent,
   SidebarFooter,
 } from '@/components/ui/sidebar';
-import { useUser } from '@/firebase';
+import { useUser, useFirebase } from '@/firebase';
 import { signInWithGoogle, signOutWithGoogle } from '@/firebase/auth';
 import { getAuth } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -20,10 +20,41 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useEffect, useState } from 'react';
+import { collection, query, where, onSnapshot, orderBy, doc, deleteDoc } from 'firebase/firestore';
 
-export function ChatSidebarContent() {
+interface Chat {
+    id: string;
+    name: string;
+}
+
+export function ChatSidebarContent({ onChatSelect, currentChatId }: { onChatSelect: (id: string) => void; currentChatId: string | null; }) {
   const { user, loading } = useUser();
   const { toast } = useToast();
+  const { firestore } = useFirebase();
+  const [chats, setChats] = useState<Chat[]>([]);
+  
+  useEffect(() => {
+    if (!firestore || !user) {
+        setChats([]);
+        return;
+    };
+
+    const chatsQuery = query(
+      collection(firestore, `users/${user.uid}/chats`),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(chatsQuery, (snapshot) => {
+      const newChats = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data().name,
+      }));
+      setChats(newChats);
+    });
+
+    return () => unsubscribe();
+  }, [firestore, user]);
 
   const handleLogin = async () => {
     try {
@@ -46,6 +77,7 @@ export function ChatSidebarContent() {
     try {
       const auth = getAuth();
       await signOutWithGoogle(auth);
+      onChatSelect('');
       toast({
         title: 'Success',
         description: 'You have been logged out.',
@@ -58,6 +90,15 @@ export function ChatSidebarContent() {
         description: 'Failed to log out. Please try again.',
       });
     }
+  };
+  
+  const deleteChat = async (chatId: string) => {
+      if (!firestore || !user) return;
+      await deleteDoc(doc(firestore, `users/${user.uid}/chats`, chatId));
+      toast({ title: 'Chat deleted' });
+      if (currentChatId === chatId) {
+        onChatSelect('');
+      }
   };
 
   return (
@@ -72,14 +113,38 @@ export function ChatSidebarContent() {
       </SidebarHeader>
 
       <SidebarContent>
-        <Button variant="ghost" className="w-full justify-start mt-4 bg-sidebar-accent">
+        <Button variant="ghost" className="w-full justify-start mt-4 bg-sidebar-accent" onClick={() => onChatSelect('')}>
           <Edit className="mr-2 size-4" />
           New Chat
         </Button>
         <div className="flex-1 mt-4 overflow-y-auto">
-          <p className="text-sm text-sidebar-foreground/70 p-2">
-            Previous chats will be displayed here.
-          </p>
+          {chats.length > 0 ? (
+             <div className="space-y-2">
+                {chats.map((chat) => (
+                    <div key={chat.id} className="flex items-center group">
+                        <Button
+                            variant={currentChatId === chat.id ? 'secondary' : 'ghost'}
+                            className="w-full justify-start truncate"
+                            onClick={() => onChatSelect(chat.id)}
+                        >
+                            {chat.name}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="shrink-0 opacity-0 group-hover:opacity-100"
+                            onClick={() => deleteChat(chat.id)}
+                        >
+                            <Trash2 className="size-4" />
+                        </Button>
+                    </div>
+                ))}
+            </div>
+          ) : (
+             <p className="text-sm text-sidebar-foreground/70 p-2">
+                No previous chats.
+             </p>
+          )}
         </div>
       </SidebarContent>
 
@@ -103,7 +168,7 @@ export function ChatSidebarContent() {
                   <span className='truncate'>{user.displayName}</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 w-full">
+                <div className="flex items-center gap-2 w-full" onClick={handleLogin}>
                   <UserIcon className="size-5" />
                   <span>Log in</span>
                 </div>

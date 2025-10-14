@@ -10,13 +10,12 @@ let firestore: Firestore;
 function initializeFirebase() {
   if (getApps().length === 0) {
     firebaseApp = initializeApp(firebaseConfig);
-    auth = getAuth(firebaseApp);
-    firestore = getFirestore(firebaseApp);
   } else {
     firebaseApp = getApp();
-    auth = getAuth(firebaseApp);
-    firestore = getFirestore(firebaseApp);
   }
+  auth = getAuth(firebaseApp);
+  firestore = getFirestore(firebaseApp);
+  
   return { firebaseApp, auth, firestore };
 }
 

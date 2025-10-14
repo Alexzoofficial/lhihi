@@ -1,27 +1,29 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   SidebarProvider,
   Sidebar,
-  SidebarHeader,
-  SidebarTrigger,
-  SidebarContent,
-  SidebarInset,
 } from '@/components/ui/sidebar';
 import { ChatSidebarContent } from './chat-sidebar';
 import ChatPanel from './chat-panel';
 
 export function ChatLayout() {
+  const [chatId, setChatId] = useState<string | null>(null);
+  
+  const handleChatSelect = (id: string) => {
+    setChatId(id);
+  }
+
   return (
     <SidebarProvider>
       <div className="flex h-screen bg-background text-foreground">
         <Sidebar>
-          <ChatSidebarContent />
+          <ChatSidebarContent onChatSelect={handleChatSelect} currentChatId={chatId} />
         </Sidebar>
-        <SidebarInset>
-          <ChatPanel />
-        </SidebarInset>
+        <div className="flex-1">
+          <ChatPanel key={chatId} />
+        </div>
       </div>
     </SidebarProvider>
   );
