@@ -2,10 +2,10 @@
 import type { Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, Volume2, Edit, Check, MoreVertical, List, Plus } from 'lucide-react';
+import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, Volume2, Edit, Check, MoreVertical, List, Plus, Link as LinkIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useState, useRef } from 'react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 
 const CodeBlock = ({ children }: { children: string }) => {
   const [copied, setCopied] = useState(false);
@@ -106,7 +106,7 @@ const renderText = (content: string) => {
 };
 
 
-export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl, relatedQueries, onSelectQuery }: Message) {
+export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl, relatedQueries, onSelectQuery, sources }: Message) {
   const isUser = role === 'user';
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState(false);
@@ -212,8 +212,17 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuItem onClick={handleSpeak} disabled={isPlaying || !audioUrl}>
-                      <Volume2 className="size-4 text-current" />
+                      <Volume2 className="size-4" />
                     </DropdownMenuItem>
+                    {sources && sources.length > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>
+                          <LinkIcon className="size-4 mr-2" />
+                          Sources ({sources.length})
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <audio ref={audioRef} src={audioUrl} preload="auto" className="hidden" />

@@ -19,4 +19,5 @@ export type Message = {
   onSelectQuery?: (query: string) => void;
   audioUrl?: string;
   relatedQueries?: string[];
+  sources?: string[];
 };

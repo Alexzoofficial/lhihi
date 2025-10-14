@@ -3,6 +3,7 @@ import React, { useEffect, useRef } from 'react';
 import type { Message } from '@/lib/types';
 import { ChatMessage } from './chat-message';
 import { Skeleton } from '../ui/skeleton';
+import { LhihiLogo } from '../icons';
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -33,13 +34,15 @@ export function ChatMessages({ messages, isResponding, onRegenerate, onSelectQue
         ))}
         {isResponding && (
             <div className="flex items-start gap-4">
-                <div className="flex flex-col gap-2 p-3 rounded-2xl bg-muted rounded-bl-none">
-                    <div className="flex items-center gap-2">
-                        <Skeleton className="h-4 w-4 rounded-full" />
-                        <Skeleton className="h-4 w-16" />
+                 <div className="flex items-center justify-center size-8 rounded-full bg-primary/10 shrink-0">
+                    <LhihiLogo className="size-5 text-primary" />
+                </div>
+                <div className="flex flex-col gap-2 p-3 rounded-2xl rounded-bl-none w-full max-w-[85%]">
+                    <div className="flex items-center gap-2 font-semibold text-sm">
+                        Thinking...
                     </div>
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-4/5" />
                 </div>
             </div>
         )}

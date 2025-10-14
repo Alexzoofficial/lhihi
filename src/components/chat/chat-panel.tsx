@@ -150,6 +150,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
           role: 'assistant',
           content: result.response,
           relatedQueries: result.relatedQueries,
+          sources: result.sources,
           createdAt: new Date(),
         };
 
@@ -224,7 +225,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
       createdAt: new Date(),
     };
     
-    const currentMessages = [...messages, userMessage];
+    let currentMessages = [...messages, userMessage];
     setMessages(currentMessages);
     form.reset();
 
@@ -259,40 +260,34 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
     }
 
     const assistantMessage = await processResponse(data.message, currentMessages);
+    setIsResponding(false);
 
     if (user && firestore && activeChatId) {
-      const assistantMessageRef = await addDoc(collection(firestore, `users/${user.uid}/chats/${activeChatId}/messages`), {
-          ...assistantMessage,
-          id: '', // placeholder, will be replaced by doc id
-          attachments: assistantMessage.attachments ? assistantMessage.attachments.map(a => ({...a, file: null})) : [],
-          createdAt: serverTimestamp()
-      });
-      // update message id with the one from firestore
-      assistantMessage.id = assistantMessageRef.id;
-      await updateDoc(assistantMessageRef, { id: assistantMessageRef.id });
+        currentMessages.pop(); // Remove the temp user message
+        const finalAssistantMessage = { ...assistantMessage, id: uuidv4() }; // Create a new object for state
+        setMessages(prev => [...prev, finalAssistantMessage]);
 
-      // Pre-generate audio
-      if (assistantMessage.content) {
-          textToSpeech(assistantMessage.content).then(async (ttsResult) => {
-              assistantMessage.audioUrl = ttsResult.audio;
-               // Update message in local state
-              setMessages(prev => {
-                const updatedMessages = [...prev];
-                updatedMessages.push(assistantMessage);
-                return updatedMessages;
-              });
-              // Update firestore doc with audioUrl
-              await updateDoc(assistantMessageRef, { audioUrl: ttsResult.audio });
-          }).catch(err => console.error("TTS generation failed:", err));
-      } else {
-        setMessages(prev => [...prev, assistantMessage]);
-      }
+        const assistantMessageRef = await addDoc(collection(firestore, `users/${user.uid}/chats/${activeChatId}/messages`), {
+          ...finalAssistantMessage,
+          createdAt: serverTimestamp()
+        });
+
+        await updateDoc(assistantMessageRef, { id: assistantMessageRef.id });
+        finalAssistantMessage.id = assistantMessageRef.id; // Update the ID in the object
+
+        if (finalAssistantMessage.content) {
+            textToSpeech(finalAssistantMessage.content).then(async (ttsResult) => {
+                finalAssistantMessage.audioUrl = ttsResult.audio;
+                setMessages(prev => prev.map(m => m.id === finalAssistantMessage.id ? finalAssistantMessage : m));
+                await updateDoc(assistantMessageRef, { audioUrl: ttsResult.audio });
+            }).catch(err => console.error("TTS generation failed:", err));
+        }
 
     } else {
+        // Handle local-only chat
+        currentMessages.pop();
         setMessages(prev => [...prev, assistantMessage]);
     }
-    
-    setIsResponding(false);
   };
   
   const handleSelectQuery = (query: string) => {
@@ -396,7 +391,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
         </div>
       </header>
       <div className="flex-1 overflow-y-auto">
-        {messages.length === 0 && !currentChatId ? (
+        {messages.length === 0 && !currentChatId && !isResponding ? (
           <div className="flex flex-col items-center justify-center h-full px-4 text-center">
             
             <div className="text-center">
