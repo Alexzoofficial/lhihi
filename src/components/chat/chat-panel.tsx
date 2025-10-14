@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -5,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { generateResponse } from '@/ai/flows/generate-response';
+import { textToSpeech } from '@/ai/flows/text-to-speech';
 import type { Message, Attachment } from '@/lib/types';
 import { ChatMessages } from './chat-messages';
 import { ChatInput } from './chat-input';
@@ -27,12 +29,10 @@ import { signInWithGoogle, signOutWithGoogle } from '@/firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAuth } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
-import { addDoc, collection, serverTimestamp, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, onSnapshot, query, orderBy, updateDoc, doc } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { GoogleIcon } from '../icons';
-import Image from 'next/image';
-
 
 const formSchema = z
   .object({
@@ -72,13 +72,10 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
     );
 
     const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-      const newMessages: Message[] = [];
-      snapshot.forEach((doc) => {
-        newMessages.push({
+      const newMessages: Message[] = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-        } as Message);
-      });
+        } as Message));
       setMessages(newMessages);
     }, (error) => {
         console.error("Error fetching messages:", error);
@@ -180,21 +177,33 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
     }
 
     setIsResponding(true);
-    setMessages(prev => prev.slice(0, messageIndex)); // Remove the old assistant response
+    setMessages(prev => prev.slice(0, messageIndex));
 
     const assistantMessage = await processResponse(lastUserMessage.content, messagesToResend);
+    
+    // Pre-generate audio for the new message
+    if (assistantMessage.content) {
+        textToSpeech(assistantMessage.content).then(ttsResult => {
+            assistantMessage.audioUrl = ttsResult.audio;
+            // Update message in state and Firestore with audioUrl
+            setMessages(prev => prev.map(m => m.id === assistantMessage.id ? assistantMessage : m));
+            if (user && firestore && currentChatId) {
+                const messageRef = doc(firestore, `users/${user.uid}/chats/${currentChatId}/messages`, assistantMessage.id);
+                updateDoc(messageRef, { audioUrl: ttsResult.audio });
+            }
+        });
+    }
     
     setMessages(prev => [...prev, assistantMessage]);
 
     if (user && firestore && currentChatId) {
-        // This is a simplified approach. A more robust solution would be to
-        // update the existing message or handle this logic server-side.
-        await addDoc(collection(firestore, `users/${user.uid}/chats/${currentChatId}/messages`), {
+        const messageRef = doc(firestore, `users/${user.uid}/chats/${currentChatId}/messages`, assistantMessage.id);
+        await updateDoc(messageRef, {
             ...assistantMessage,
-            attachments: assistantMessage.attachments ? assistantMessage.attachments.map(a => ({...a, file: null})) : [], // Don't save file object to Firestore
-            createdAt: serverTimestamp() // Use server timestamp for Firestore
+            attachments: assistantMessage.attachments ? assistantMessage.attachments.map(a => ({...a, file: null})) : [],
+            createdAt: serverTimestamp() 
         });
-      }
+    }
 
     setIsResponding(false);
   };
@@ -249,19 +258,40 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
       }
     }
 
-
     const assistantMessage = await processResponse(data.message, currentMessages);
 
-    setMessages(prev => [...prev, assistantMessage]);
-
     if (user && firestore && activeChatId) {
-      await addDoc(collection(firestore, `users/${user.uid}/chats/${activeChatId}/messages`), {
+      const assistantMessageRef = await addDoc(collection(firestore, `users/${user.uid}/chats/${activeChatId}/messages`), {
           ...assistantMessage,
-          attachments: assistantMessage.attachments ? assistantMessage.attachments.map(a => ({...a, file: null})) : [], // Don't save file object to Firestore
-          createdAt: serverTimestamp() // Use server timestamp for Firestore
+          id: '', // placeholder, will be replaced by doc id
+          attachments: assistantMessage.attachments ? assistantMessage.attachments.map(a => ({...a, file: null})) : [],
+          createdAt: serverTimestamp()
       });
-    }
+      // update message id with the one from firestore
+      assistantMessage.id = assistantMessageRef.id;
+      await updateDoc(assistantMessageRef, { id: assistantMessageRef.id });
 
+      // Pre-generate audio
+      if (assistantMessage.content) {
+          textToSpeech(assistantMessage.content).then(async (ttsResult) => {
+              assistantMessage.audioUrl = ttsResult.audio;
+               // Update message in local state
+              setMessages(prev => {
+                const updatedMessages = [...prev];
+                updatedMessages.push(assistantMessage);
+                return updatedMessages;
+              });
+              // Update firestore doc with audioUrl
+              await updateDoc(assistantMessageRef, { audioUrl: ttsResult.audio });
+          }).catch(err => console.error("TTS generation failed:", err));
+      } else {
+        setMessages(prev => [...prev, assistantMessage]);
+      }
+
+    } else {
+        setMessages(prev => [...prev, assistantMessage]);
+    }
+    
     setIsResponding(false);
   };
 

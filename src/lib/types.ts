@@ -1,3 +1,4 @@
+
 import { FieldValue } from "firebase/firestore";
 
 export type Attachment = {
@@ -15,4 +16,5 @@ export type Message = {
   attachments?: Attachment[];
   createdAt: FieldValue | Date;
   onRegenerate?: () => void;
+  audioUrl?: string;
 };

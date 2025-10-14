@@ -2,10 +2,10 @@
 import type { Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, Volume2, Edit, Check } from 'lucide-react';
+import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, Volume2, Edit, Check, MoreVertical } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useState, useRef } from 'react';
-import { textToSpeech } from '@/ai/flows/text-to-speech';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 const CodeBlock = ({ children }: { children: string }) => {
   const [copied, setCopied] = useState(false);
@@ -42,12 +42,25 @@ const renderContent = (content: string) => {
         }
         return null;
       }
-      return <span key={index}>{part}</span>;
+      // Process bold text and lists
+      const boldAndListParts = part.split(/(\*\*.*?\*\*)/g);
+      return boldAndListParts.map((subPart, subIndex) => {
+        if (subPart.startsWith('**') && subPart.endsWith('**')) {
+          return <strong key={subIndex}>{subPart.slice(2, -2)}</strong>;
+        }
+        const lines = subPart.split('\n').map((line, lineIndex) => {
+            if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+                return <li key={lineIndex} className="ml-4 list-disc">{line.trim().substring(2)}</li>
+            }
+            return <span key={lineIndex}>{line}<br/></span>;
+        });
+        return <div key={subIndex}>{lines}</div>;
+      });
     }).filter(Boolean);
 };
 
 
-export function ChatMessage({ role, content, attachments, onRegenerate }: Message & { onRegenerate?: () => void }) {
+export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl }: Message & { onRegenerate?: () => void; audioUrl?: string; }) {
   const isUser = role === 'user';
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState(false);
@@ -74,25 +87,21 @@ export function ChatMessage({ role, content, attachments, onRegenerate }: Messag
       if (liked) setLiked(false);
   }
   
-  const handleSpeak = async () => {
-    if (!content || isPlaying) return;
+  const handleSpeak = () => {
+    if (!audioUrl || isPlaying) return;
 
     setIsPlaying(true);
-    try {
-        const { audio } = await textToSpeech(content);
-        const audioBlob = await (await fetch(audio)).blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-
-        if (audioRef.current) {
-            audioRef.current.src = audioUrl;
-            audioRef.current.play();
-            audioRef.current.onended = () => {
-              setIsPlaying(false);
-              URL.revokeObjectURL(audioUrl);
-            }
+    if (audioRef.current) {
+        audioRef.current.src = audioUrl;
+        audioRef.current.play();
+        audioRef.current.onended = () => {
+          setIsPlaying(false);
         }
-    } catch (error) {
-        console.error("Error generating speech:", error);
+        audioRef.current.onerror = () => {
+            setIsPlaying(false);
+            console.error("Error playing audio.");
+        }
+    } else {
         setIsPlaying(false);
     }
   };
@@ -158,9 +167,19 @@ export function ChatMessage({ role, content, attachments, onRegenerate }: Messag
                             <RefreshCw className="size-4" />
                         </Button>
                     )}
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleSpeak} disabled={isPlaying}>
-                      <Volume2 className="size-4" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <MoreVertical className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={handleSpeak} disabled={isPlaying || !audioUrl}>
+                          <Volume2 className="mr-2 size-4" />
+                          <span>Speak</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <audio ref={audioRef} className="hidden" />
                 </>
             )}

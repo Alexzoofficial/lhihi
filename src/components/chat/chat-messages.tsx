@@ -1,10 +1,8 @@
+
 import React, { useEffect, useRef } from 'react';
 import type { Message } from '@/lib/types';
 import { ChatMessage } from './chat-message';
 import { Skeleton } from '../ui/skeleton';
-import { LhihiLogo } from '../icons';
-import { Avatar, AvatarFallback } from '../ui/avatar';
-
 
 interface ChatMessagesProps {
   messages: Message[];
