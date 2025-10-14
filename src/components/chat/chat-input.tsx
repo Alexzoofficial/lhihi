@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowUp, Paperclip } from 'lucide-react';
 import { Attachment } from '@/lib/types';
 import Image from 'next/image';
+import { Suggestions } from './suggestions';
 
 interface ChatInputProps {
   form: UseFormReturn<{ message: string, attachments: Attachment[] }>;
@@ -19,12 +20,21 @@ export function ChatInput({ form, onSubmit, isResponding, onFileChange, removeAt
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { message, attachments } = form.watch();
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const exampleSuggestions = [
+    'what is google',
+    'google earth',
+    'google flights',
+    'google maps',
+  ]
 
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
+    setShowSuggestions(message.length > 0);
   }, [message]);
   
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -34,87 +44,100 @@ export function ChatInput({ form, onSubmit, isResponding, onFileChange, removeAt
     }
   };
   
+  const handleSelectSuggestion = (suggestion: string) => {
+    form.setValue('message', suggestion);
+    setShowSuggestions(false);
+  }
+
   return (
     <Form {...form}>
-      <form onSubmit={onSubmit} className="relative flex flex-col w-full max-w-3xl mx-auto bg-white dark:bg-card rounded-xl border shadow-lg">
-        {attachments && attachments.length > 0 && (
-          <div className="p-4 border-b">
-            <div className="flex flex-wrap gap-2">
-              {attachments.map((attachment, index) => (
-                <div key={index} className="relative">
-                  {attachment.type.startsWith('image/') ? (
-                    <Image
-                      src={attachment.preview}
-                      alt={attachment.name}
-                      width={80}
-                      height={80}
-                      className="rounded-md object-cover"
-                    />
-                  ) : (
-                    <div className="w-20 h-20 bg-muted rounded-md flex items-center justify-center">
-                      <Paperclip className="size-6" />
-                    </div>
-                  )}
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                    onClick={() => removeAttachment(index)}
-                  >
-                    <span className="text-xs">X</span>
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        <div className="flex items-end p-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Paperclip className="size-5" />
-          </Button>
-          <FormField
-            control={form.control}
-            name="message"
-            render={({ field }) => (
-              <FormItem className="flex-1">
-                <FormControl>
-                  <Textarea
-                    placeholder="Message lhihi AI..."
-                    className="resize-none border-0 shadow-none focus-visible:ring-0 max-h-[200px] bg-transparent"
-                    {...field}
-                    ref={textareaRef}
-                    onKeyDown={handleKeyDown}
-                    rows={1}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
+      <div className="relative w-full max-w-3xl mx-auto">
+        {showSuggestions && (
+          <Suggestions
+            suggestions={exampleSuggestions.filter(s => s.includes(message.toLowerCase()))}
+            onSelectSuggestion={handleSelectSuggestion}
           />
-          <Button
-            type="submit"
-            size="icon"
-            className="shrink-0 h-8 w-8"
-            disabled={isResponding || (!message && attachments.length === 0)}
-            aria-label="Send message"
-          >
-            <ArrowUp className="size-4" />
-          </Button>
-        </div>
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={onFileChange}
-          className="hidden"
-          multiple
-        />
-      </form>
+        )}
+        <form onSubmit={onSubmit} className="relative flex flex-col w-full bg-white dark:bg-card rounded-xl border shadow-lg">
+          {attachments && attachments.length > 0 && (
+            <div className="p-4 border-b">
+              <div className="flex flex-wrap gap-2">
+                {attachments.map((attachment, index) => (
+                  <div key={index} className="relative">
+                    {attachment.type.startsWith('image/') ? (
+                      <Image
+                        src={attachment.preview}
+                        alt={attachment.name}
+                        width={80}
+                        height={80}
+                        className="rounded-md object-cover"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 bg-muted rounded-md flex items-center justify-center">
+                        <Paperclip className="size-6" />
+                      </div>
+                    )}
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                      onClick={() => removeAttachment(index)}
+                    >
+                      <span className="text-xs">X</span>
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="flex items-end p-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Paperclip className="size-5" />
+            </Button>
+            <FormField
+              control={form.control}
+              name="message"
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormControl>
+                    <Textarea
+                      placeholder="Message lhihi AI..."
+                      className="resize-none border-0 shadow-none focus-visible:ring-0 max-h-[200px] bg-transparent"
+                      {...field}
+                      ref={textareaRef}
+                      onKeyDown={handleKeyDown}
+                      rows={1}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <Button
+              type="submit"
+              size="icon"
+              className="shrink-0 h-8 w-8"
+              disabled={isResponding || (!message && attachments.length === 0)}
+              aria-label="Send message"
+            >
+              <ArrowUp className="size-4" />
+            </Button>
+          </div>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={onFileChange}
+            className="hidden"
+            multiple
+          />
+        </form>
+      </div>
     </Form>
   );
 }
