@@ -11,18 +11,18 @@ import ChatPanel from './chat-panel';
 export function ChatLayout() {
   const [chatId, setChatId] = useState<string | null>(null);
   
-  const handleChatSelect = (id: string) => {
-    setChatId(id);
+  const handleNewChat = () => {
+    setChatId(null);
   }
 
   return (
     <SidebarProvider>
       <div className="flex h-screen bg-background text-foreground">
         <Sidebar>
-          <ChatSidebarContent onChatSelect={handleChatSelect} currentChatId={chatId} />
+          <ChatSidebarContent onChatSelect={setChatId} currentChatId={chatId} onNewChat={handleNewChat} />
         </Sidebar>
         <div className="flex-1">
-          <ChatPanel key={chatId} />
+          <ChatPanel chatId={chatId} setChatId={setChatId} />
         </div>
       </div>
     </SidebarProvider>

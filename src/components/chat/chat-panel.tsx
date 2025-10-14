@@ -25,7 +25,7 @@ import { signInWithGoogle, signOutWithGoogle } from '@/firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAuth } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
-import { addDoc, collection, serverTimestamp, onSnapshot, query, where, orderBy, doc, getDoc } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, onSnapshot, query, where, orderBy, doc, getDoc, deleteDoc } from 'firebase/firestore';
 
 const formSchema = z
   .object({
@@ -39,22 +39,21 @@ const formSchema = z
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function ChatPanel() {
+export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrentChatId }: { chatId: string | null, setChatId: (id: string | null) => void }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isResponding, setIsResponding] = useState(false);
   const { user, loading } = useUser();
   const { toast } = useToast();
   const { firestore } = useFirebase();
-  const [chatId, setChatId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!firestore || !user || !chatId) {
+    if (!firestore || !user || !currentChatId) {
       setMessages([]);
       return;
     };
 
     const messagesQuery = query(
-      collection(firestore, `users/${user.uid}/chats/${chatId}/messages`),
+      collection(firestore, `users/${user.uid}/chats/${currentChatId}/messages`),
       orderBy('createdAt')
     );
 
@@ -67,7 +66,7 @@ export default function ChatPanel() {
     });
 
     return () => unsubscribe();
-  }, [firestore, user, chatId]);
+  }, [firestore, user, currentChatId]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -98,7 +97,7 @@ export default function ChatPanel() {
     try {
       const auth = getAuth();
       await signOutWithGoogle(auth);
-      setChatId(null);
+      setCurrentChatId(null);
       setMessages([]);
       toast({
         title: 'Success',
@@ -126,15 +125,14 @@ export default function ChatPanel() {
     
     setIsResponding(true);
 
-    let currentChatId = chatId;
-    // Create a new chat if one doesn't exist
-    if (!currentChatId) {
+    let newChatId = currentChatId;
+    if (!newChatId) {
       const chatRef = await addDoc(collection(firestore, `users/${user.uid}/chats`), {
         name: data.message.substring(0, 30),
         createdAt: serverTimestamp(),
       });
-      currentChatId = chatRef.id;
-      setChatId(currentChatId);
+      newChatId = chatRef.id;
+      setCurrentChatId(newChatId);
     }
     
     const userMessage: Omit<Message, 'id'> = {
@@ -143,38 +141,40 @@ export default function ChatPanel() {
       attachments: data.attachments,
       createdAt: serverTimestamp(),
     };
-
-    const messagesCol = collection(firestore, `users/${user.uid}/chats/${currentChatId}/messages`);
-    await addDoc(messagesCol, userMessage);
     
-    form.reset();
+    if (newChatId) {
+      const messagesCol = collection(firestore, `users/${user.uid}/chats/${newChatId}/messages`);
+      await addDoc(messagesCol, userMessage);
+      
+      form.reset();
 
-    const conversationHistory = [...messages, {...userMessage, id: 'temp'}]
-      .map((msg) => `${msg.role}: ${msg.content}`)
-      .join('\n');
+      const conversationHistory = [...messages, {...userMessage, id: 'temp'}]
+        .map((msg) => `${msg.role}: ${msg.content}`)
+        .join('\n');
 
-    try {
-      const result = await generateResponse({
-        conversationHistory: conversationHistory,
-        userInput: data.message,
-      });
+      try {
+        const result = await generateResponse({
+          conversationHistory: conversationHistory,
+          userInput: data.message,
+        });
 
-      const assistantMessage: Omit<Message, 'id'> = {
-        role: 'assistant',
-        content: result.response,
-        createdAt: serverTimestamp(),
-      };
-      await addDoc(messagesCol, assistantMessage);
-    } catch (error) {
-      console.error('Error generating response:', error);
-      const errorMessage: Omit<Message, 'id'> = {
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        createdAt: serverTimestamp(),
-      };
-      await addDoc(messagesCol, errorMessage);
-    } finally {
-      setIsResponding(false);
+        const assistantMessage: Omit<Message, 'id'> = {
+          role: 'assistant',
+          content: result.response,
+          createdAt: serverTimestamp(),
+        };
+        await addDoc(messagesCol, assistantMessage);
+      } catch (error) {
+        console.error('Error generating response:', error);
+        const errorMessage: Omit<Message, 'id'> = {
+          role: 'assistant',
+          content: 'Sorry, I encountered an error. Please try again.',
+          createdAt: serverTimestamp(),
+        };
+        await addDoc(messagesCol, errorMessage);
+      } finally {
+        setIsResponding(false);
+      }
     }
   };
 
@@ -208,19 +208,36 @@ export default function ChatPanel() {
   
   const onExampleQueryClick = (query: string) => {
     form.setValue('message', query);
-    form.handleSubmit(onSubmit)();
+    // Directly call onSubmit without form wrapper
+    onSubmit({ message: query, attachments: [] });
   };
+
 
   return (
     <main className="flex flex-col h-full max-h-screen">
-      <header className="flex items-center justify-between p-2 border-b md:hidden">
+       <header className="flex items-center justify-between p-2 border-b md:hidden">
         <SidebarTrigger />
-        <h1 className="text-lg font-semibold">Alexzo Intelligence</h1>
+        <div className="flex-1 text-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="px-4 py-2 text-lg font-semibold">
+                  Alexzo Intelligence
+                  <ChevronDown className="ml-2 size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuLabel>Select a model</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Alexzo Intelligence</DropdownMenuItem>
+                <DropdownMenuItem disabled>Coming Soon</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon">
               {loading ? (
-                <div className="h-5 w-5 rounded-full bg-gray-300 animate-pulse" />
+                <div className="h-8 w-8 rounded-full bg-gray-300 animate-pulse" />
               ) : user ? (
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? ''} />
@@ -229,7 +246,9 @@ export default function ChatPanel() {
                   </AvatarFallback>
                 </Avatar>
               ) : (
-                <UserIcon className="size-5" />
+                <div onClick={handleLogin}>
+                  <UserIcon className="size-5" />
+                </div>
               )}
             </Button>
           </DropdownMenuTrigger>
@@ -261,7 +280,7 @@ export default function ChatPanel() {
                   How can I help you today?
                 </h1>
             </div>
-             <div className="mt-4 mb-8">
+             <div className="hidden md:block mt-4 mb-8">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="px-4 py-2 bg-muted hover:bg-muted/80">

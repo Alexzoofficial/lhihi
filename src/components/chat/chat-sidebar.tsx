@@ -21,14 +21,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useEffect, useState } from 'react';
-import { collection, query, where, onSnapshot, orderBy, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, doc, deleteDoc } from 'firebase/firestore';
 
 interface Chat {
     id: string;
     name: string;
 }
 
-export function ChatSidebarContent({ onChatSelect, currentChatId }: { onChatSelect: (id: string) => void; currentChatId: string | null; }) {
+export function ChatSidebarContent({ onChatSelect, currentChatId, onNewChat }: { onChatSelect: (id: string) => void; currentChatId: string | null; onNewChat: () => void; }) {
   const { user, loading } = useUser();
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -77,7 +77,7 @@ export function ChatSidebarContent({ onChatSelect, currentChatId }: { onChatSele
     try {
       const auth = getAuth();
       await signOutWithGoogle(auth);
-      onChatSelect('');
+      onNewChat();
       toast({
         title: 'Success',
         description: 'You have been logged out.',
@@ -92,12 +92,21 @@ export function ChatSidebarContent({ onChatSelect, currentChatId }: { onChatSele
     }
   };
   
-  const deleteChat = async (chatId: string) => {
+  const deleteChat = async (chatIdToDelete: string) => {
       if (!firestore || !user) return;
-      await deleteDoc(doc(firestore, `users/${user.uid}/chats`, chatId));
+      
+      const messagesQuery = query(collection(firestore, `users/${user.uid}/chats/${chatIdToDelete}/messages`));
+      const messagesSnapshot = await getDocs(messagesQuery);
+      const batch = writeBatch(firestore);
+      messagesSnapshot.forEach(doc => {
+          batch.delete(doc.ref);
+      });
+      await batch.commit();
+
+      await deleteDoc(doc(firestore, `users/${user.uid}/chats`, chatIdToDelete));
       toast({ title: 'Chat deleted' });
-      if (currentChatId === chatId) {
-        onChatSelect('');
+      if (currentChatId === chatIdToDelete) {
+        onNewChat();
       }
   };
 
@@ -113,12 +122,12 @@ export function ChatSidebarContent({ onChatSelect, currentChatId }: { onChatSele
       </SidebarHeader>
 
       <SidebarContent>
-        <Button variant="ghost" className="w-full justify-start mt-4 bg-sidebar-accent" onClick={() => onChatSelect('')}>
+        <Button variant="ghost" className="w-full justify-start mt-4 bg-sidebar-accent" onClick={onNewChat}>
           <Edit className="mr-2 size-4" />
           New Chat
         </Button>
         <div className="flex-1 mt-4 overflow-y-auto">
-          {chats.length > 0 ? (
+          {user && chats.length > 0 ? (
              <div className="space-y-2">
                 {chats.map((chat) => (
                     <div key={chat.id} className="flex items-center group">
@@ -133,16 +142,23 @@ export function ChatSidebarContent({ onChatSelect, currentChatId }: { onChatSele
                             variant="ghost"
                             size="icon"
                             className="shrink-0 opacity-0 group-hover:opacity-100"
-                            onClick={() => deleteChat(chat.id)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                deleteChat(chat.id);
+                            }}
                         >
                             <Trash2 className="size-4" />
                         </Button>
                     </div>
                 ))}
             </div>
-          ) : (
+          ) : user ? (
              <p className="text-sm text-sidebar-foreground/70 p-2">
                 No previous chats.
+             </p>
+          ) : (
+            <p className="text-sm text-sidebar-foreground/70 p-2">
+                Log in to see your chat history.
              </p>
           )}
         </div>
