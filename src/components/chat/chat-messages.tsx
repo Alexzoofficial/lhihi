@@ -16,7 +16,7 @@ export function ChatMessages({ messages, isResponding, onRegenerate, onSelectQue
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollArea.current.scrollHeight;
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages, isResponding]);
 
