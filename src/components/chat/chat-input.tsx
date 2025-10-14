@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { ArrowUp, Paperclip } from 'lucide-react';
 import { Attachment } from '@/lib/types';
 import Image from 'next/image';
-import { Suggestions } from './suggestions';
 
 interface ChatInputProps {
   form: UseFormReturn<{ message: string, attachments: Attachment[] }>;
@@ -20,21 +19,12 @@ export function ChatInput({ form, onSubmit, isResponding, onFileChange, removeAt
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { message, attachments } = form.watch();
-  const [showSuggestions, setShowSuggestions] = useState(false);
-
-  const exampleSuggestions = [
-    'what is google',
-    'google earth',
-    'google flights',
-    'google maps',
-  ]
 
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
-    setShowSuggestions(message.length > 0);
   }, [message]);
   
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -44,20 +34,9 @@ export function ChatInput({ form, onSubmit, isResponding, onFileChange, removeAt
     }
   };
   
-  const handleSelectSuggestion = (suggestion: string) => {
-    form.setValue('message', suggestion);
-    setShowSuggestions(false);
-  }
-
   return (
     <Form {...form}>
       <div className="relative w-full max-w-3xl mx-auto">
-        {showSuggestions && (
-          <Suggestions
-            suggestions={exampleSuggestions.filter(s => s.includes(message.toLowerCase()))}
-            onSelectSuggestion={handleSelectSuggestion}
-          />
-        )}
         <form onSubmit={onSubmit} className="relative flex flex-col w-full bg-white dark:bg-card rounded-xl border shadow-lg">
           {attachments && attachments.length > 0 && (
             <div className="p-4 border-b">

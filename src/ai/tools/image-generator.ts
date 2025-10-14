@@ -39,10 +39,15 @@ export const generateImage = ai.defineTool(
       }
 
       const data = await response.json();
-      const imageUrl = data.data[0].url;
-      console.log('Image generated successfully:', imageUrl);
+      if (data && data.data && data.data.length > 0 && data.data[0].url) {
+        const imageUrl = data.data[0].url;
+        console.log('Image generated successfully:', imageUrl);
+        return imageUrl;
+      } else {
+        console.error('Error generating image: Invalid API response format.');
+        return 'Error: Failed to parse the image from the response.';
+      }
       
-      return imageUrl;
     } catch (error) {
       console.error('Error generating image:', error);
       return 'Error: Failed to generate the image. Please try again with a different prompt.';

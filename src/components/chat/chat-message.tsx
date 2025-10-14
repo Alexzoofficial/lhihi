@@ -191,7 +191,7 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
         {!isUser && (
             <div className="flex items-center gap-2 transition-opacity opacity-100 group-hover:opacity-100">
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy}>
-                    {copied ? <Check className="size-4 text-current" /> : <Copy className="size-4" />}
+                    {copied ? <Check className="size-4 text-primary" /> : <Copy className="size-4" />}
                 </Button>
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleLike}>
                     <ThumbsUp className={cn("size-4", liked && "fill-current")} />
@@ -212,7 +212,7 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuItem onClick={handleSpeak} disabled={isPlaying || !audioUrl}>
-                      <Volume2 className="size-4" />
+                      <Volume2 className="size-4 text-current" />
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -247,7 +247,7 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
                     <Edit className="size-4" />
                 </Button>
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy}>
-                    {copied ? <Check className="size-4 text-current" /> : <Copy className="size-4" />}
+                    {copied ? <Check className="size-4 text-primary" /> : <Copy className="size-4" />}
                 </Button>
             </div>
         )}
