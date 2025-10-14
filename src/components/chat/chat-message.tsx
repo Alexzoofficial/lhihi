@@ -35,18 +35,32 @@ const CodeBlock = ({ children }: { children: string }) => {
 const renderContent = (content: string) => {
     // Handle generated images
     const imageRegex = /:::image\[(data:image\/[^;]+;base64,[^\]]+)\]:::/g;
-    const imageParts = content.split(imageRegex);
+    
+    const parts: (string | React.ReactElement)[] = [];
+    let lastIndex = 0;
+    
+    content.replace(imageRegex, (match, dataUri, offset) => {
+        // Push the text before the image
+        if (offset > lastIndex) {
+            parts.push(content.substring(lastIndex, offset));
+        }
+        // Push the image element
+        parts.push(<Image key={offset} src={dataUri} alt="Generated image" width={300} height={300} className="rounded-md my-2" />);
+        lastIndex = offset + match.length;
+        return match;
+    });
 
-    if (imageParts.length > 1) {
-        return imageParts.map((part, index) => {
-            if (index % 2 === 1) { // This is the image data URI
-                return <Image key={index} src={part} alt="Generated image" width={300} height={300} className="rounded-md my-2" />;
-            }
-            return <div key={index}>{renderText(part)}</div>;
-        });
+    // Push any remaining text after the last image
+    if (lastIndex < content.length) {
+        parts.push(content.substring(lastIndex));
     }
-
-    return renderText(content);
+    
+    return parts.map((part, index) => {
+        if (typeof part === 'string') {
+            return <div key={index}>{renderText(part)}</div>;
+        }
+        return part;
+    });
 }
 
 const renderText = (content: string) => {
@@ -65,13 +79,28 @@ const renderText = (content: string) => {
         if (subPart.startsWith('**') && subPart.endsWith('**')) {
           return <strong key={subIndex}>{subPart.slice(2, -2)}</strong>;
         }
+        // Split by newlines and handle list items
         const lines = subPart.split('\n').map((line, lineIndex) => {
-            if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
-                return <li key={lineIndex} className="ml-4 list-disc">{line.trim().substring(2)}</li>
+            const trimmedLine = line.trim();
+            if (trimmedLine.startsWith('- ')) {
+                return <li key={lineIndex}>{trimmedLine.substring(2)}</li>;
             }
-            return <span key={lineIndex}>{line}<br/></span>;
+            if (lineIndex < subPart.split('\n').length - 1) {
+              return <span key={lineIndex}>{line}<br /></span>;
+            }
+            return <span key={lineIndex}>{line}</span>;
         });
-        return <div key={subIndex}>{lines}</div>;
+
+        const listItems = lines.filter(line => (line.props as any).children?.[0]?.type === 'li');
+        const otherItems = lines.filter(line => (line.props as any).children?.[0]?.type !== 'li');
+
+        return (
+          <div key={subIndex}>
+            {otherItems}
+            {listItems.length > 0 && <ul className="list-disc list-inside my-2">{listItems}</ul>}
+          </div>
+        );
+
       });
     }).filter(Boolean);
 };
@@ -107,19 +136,20 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
   const handleSpeak = () => {
     if (!audioUrl || isPlaying) return;
 
+    const audio = audioRef.current || new Audio(audioUrl);
+    if (!audioRef.current) {
+        (audioRef as React.MutableRefObject<HTMLAudioElement>).current = audio;
+    }
+    
     setIsPlaying(true);
-    if (audioRef.current) {
-        audioRef.current.src = audioUrl;
-        audioRef.current.play();
-        audioRef.current.onended = () => {
-          setIsPlaying(false);
-        }
-        audioRef.current.onerror = () => {
-            setIsPlaying(false);
-            console.error("Error playing audio.");
-        }
-    } else {
+    
+    audio.play().catch(e => {
+        console.error("Audio playback failed:", e);
         setIsPlaying(false);
+    });
+
+    audio.onended = () => {
+      setIsPlaying(false);
     }
   };
 
@@ -158,7 +188,7 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2 transition-opacity opacity-100 group-hover:opacity-100">
+        <div className="flex items-center gap-2 transition-opacity opacity-100 group-hover:opacity-100 text-muted-foreground">
             {isUser ? (
                 <>
                     <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -197,7 +227,7 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                    <audio ref={audioRef} className="hidden" />
+                    <audio ref={audioRef} src={audioUrl} preload="auto" className="hidden" />
                 </>
             )}
         </div>
