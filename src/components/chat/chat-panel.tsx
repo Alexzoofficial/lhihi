@@ -18,6 +18,9 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { useUser, useFirebase } from '@/firebase';
 import { signInWithGoogle, signOutWithGoogle } from '@/firebase/auth';
@@ -155,7 +158,10 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
       }
   
       const data = await response.json();
-      return data.data[0].url;
+      if (data && data.data && data.data[0] && data.data[0].url) {
+        return data.data[0].url;
+      }
+      throw new Error('Invalid response from image generation API');
     } catch (error) {
       console.error('Error generating image:', error);
       throw error;
@@ -305,10 +311,10 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   };
 
   const exampleQueries = [
-    'Future of AI',
-    'Quantum computing',
-    'Plan a Tokyo trip',
-    'Python web scraping',
+    'Write a story about a lost star',
+    'Explain quantum computing simply',
+    'Plan a 3-day trip to Tokyo',
+    'Write a python script for web scraping',
   ];
   
   const onExampleQueryClick = (query: string) => {
@@ -338,10 +344,10 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
                     <Check className="ml-auto size-4 text-primary" />
                   </DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="model-2" disabled>
-                    Model 2 (Coming Soon)
+                    Coming Soon
                   </DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="model-3" disabled>
-                    Model 3 (Coming Soon)
+                    Coming Soon
                   </DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
@@ -350,7 +356,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
         <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={() => !user && setIsLoginDialogOpen(true)}>
+                 <Button variant="ghost" size="icon" onClick={() => !user && !loading && setIsLoginDialogOpen(true)}>
                   {loading ? (
                     <div className="h-8 w-8 rounded-full bg-gray-300 animate-pulse" />
                   ) : user ? (
