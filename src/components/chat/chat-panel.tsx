@@ -15,12 +15,9 @@ import { ChevronDown, UserIcon, Check } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useUser, useFirebase } from '@/firebase';
 import { signInWithGoogle, signOutWithGoogle } from '@/firebase/auth';
@@ -53,6 +50,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   const { toast } = useToast();
   const { firestore } = useFirebase();
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
+  const [model, setModel] = useState('alexzo-intelligence');
 
 
   useEffect(() => {
@@ -171,12 +169,11 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   }
 
   const onSubmit = async (data: FormValues) => {
-    // If there are attachments, user must be logged in.
     if (data.attachments.length > 0 && !user) {
       setIsLoginDialogOpen(true);
       return;
     }
-
+    
     setIsResponding(true);
 
     const userMessage: Message = {
@@ -187,7 +184,6 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
       createdAt: new Date(),
     };
     
-    // Optimistically update UI
     const currentMessages = [...messages, userMessage];
     setMessages(currentMessages);
     form.reset();
@@ -214,7 +210,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
       try {
         await addDoc(collection(firestore, `users/${user.uid}/chats/${activeChatId}/messages`), {
             ...userMessage,
-            createdAt: serverTimestamp() // Use server timestamp for Firestore
+            createdAt: serverTimestamp()
         });
       } catch (error) {
           console.error("Error saving user message:", error);
@@ -328,9 +324,28 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
           <SidebarTrigger className="md:hidden" />
         </div>
         <div className="flex-1 flex justify-center">
-            <div className="px-4 py-2 text-lg font-semibold bg-gray-200 dark:bg-gray-700 rounded-md">
-                Alexzo Intelligence
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2">
+                  <span className="text-lg font-semibold">Alexzo Intelligence</span>
+                  <ChevronDown className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuRadioGroup value={model} onValueChange={setModel}>
+                  <DropdownMenuRadioItem value="alexzo-intelligence">
+                    Alexzo Intelligence
+                    <Check className="ml-auto size-4 text-primary" />
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="model-2" disabled>
+                    Model 2 (Coming Soon)
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="model-3" disabled>
+                    Model 3 (Coming Soon)
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
         </div>
         <div className="flex items-center gap-2">
             <DropdownMenu>
@@ -351,7 +366,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
                 </Button>
               </DropdownMenuTrigger>
               {user && (
-                <DropdownMenuContent>
+                <DropdownMenuContent align="end">
                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem disabled>Profile</DropdownMenuItem>
@@ -408,12 +423,16 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
     </main>
 
     <Dialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen}>
-        <DialogContent className="sm:max-w-md bg-gray-100 dark:bg-gray-800">
+        <DialogContent className="sm:max-w-[425px] bg-background">
             <DialogHeader>
                 <DialogTitle className="text-center text-2xl font-bold">Log in to lhihi AI</DialogTitle>
             </DialogHeader>
             <div className="flex flex-col items-center gap-4 py-4">
-                <Button onClick={handleLogin} className="w-full bg-white text-black hover:bg-gray-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600">
+                 <Image src="/favicon.svg" alt="lhihi AI" width={60} height={60} />
+                <p className="text-center text-muted-foreground">
+                    To continue, please log in. This will save your chat history and allow you to use features like file attachments.
+                </p>
+                <Button onClick={handleLogin} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
                     <GoogleIcon className="mr-2 size-5" />
                     Continue with Google
                 </Button>
