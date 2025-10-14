@@ -4,9 +4,9 @@ import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, MoreVertical, Edit, Mic, Check } from 'lucide-react';
 import { Button } from '../ui/button';
-import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { textToSpeech } from '@/ai/flows/text-to-speech';
 
 const CodeBlock = ({ children }: { children: string }) => {
   const [copied, setCopied] = useState(false);
@@ -23,7 +23,7 @@ const CodeBlock = ({ children }: { children: string }) => {
       <div className="flex items-center justify-between px-4 py-2 bg-gray-800 rounded-t-md">
         <span className="text-xs text-gray-400">code</span>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy}>
-          {copied ? <Check className="size-4 text-green-500" /> : <Copy className="size-4 text-gray-400" />}
+          {copied ? <Check className="size-4 text-primary" /> : <Copy className="size-4 text-gray-400" />}
         </Button>
       </div>
       <pre className="p-4 text-sm text-white overflow-x-auto">
@@ -38,17 +38,23 @@ const renderContent = (content: string) => {
     return parts.map((part, index) => {
       if (part.startsWith('```')) {
         const code = part.replace(/^```\w*\n?/, '').replace(/```$/, '').trim();
-        return <CodeBlock key={index}>{code}</CodeBlock>;
+        if (code) {
+            return <CodeBlock key={index}>{code}</CodeBlock>;
+        }
+        return null;
       }
       return <span key={index}>{part}</span>;
-    });
+    }).filter(Boolean);
 };
+
 
 export function ChatMessage({ role, content, attachments, onRegenerate }: Message & { onRegenerate?: () => void }) {
   const isUser = role === 'user';
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const handleCopy = () => {
     if (content) {
@@ -68,10 +74,27 @@ export function ChatMessage({ role, content, attachments, onRegenerate }: Messag
       setDisliked(!disliked);
       if (liked) setLiked(false);
   }
+  
+  const handleSpeak = async () => {
+    if (!content || isPlaying) return;
+
+    setIsPlaying(true);
+    try {
+        const { audio } = await textToSpeech(content);
+        if (audioRef.current) {
+            audioRef.current.src = audio;
+            audioRef.current.play();
+            audioRef.current.onended = () => setIsPlaying(false);
+        }
+    } catch (error) {
+        console.error("Error generating speech:", error);
+        setIsPlaying(false);
+    }
+  };
 
   return (
     <div className={cn("flex items-start gap-4", isUser ? "justify-end" : "justify-start")}>
-      <div className={cn("flex flex-col gap-1 max-w-[85%]", isUser ? "items-end" : "items-start")}>
+      <div className={cn("group flex flex-col gap-1 max-w-[85%]", isUser ? "items-end" : "items-start")}>
         <div 
           className={cn(
             "p-3 rounded-2xl", 
@@ -104,20 +127,20 @@ export function ChatMessage({ role, content, attachments, onRegenerate }: Messag
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2 transition-opacity">
+        <div className="flex items-center gap-2 transition-opacity opacity-0 group-hover:opacity-100">
             {isUser ? (
                 <>
                     <Button variant="ghost" size="icon" className="h-7 w-7">
                         <Edit className="size-4" />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy}>
-                        {copied ? <Check className="size-4 text-green-500" /> : <Copy className="size-4" />}
+                        {copied ? <Check className="size-4 text-current" /> : <Copy className="size-4" />}
                     </Button>
                 </>
             ) : (
                 <>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy}>
-                       {copied ? <Check className="size-4 text-green-500" /> : <Copy className="size-4" />}
+                       {copied ? <Check className="size-4 text-current" /> : <Copy className="size-4" />}
                     </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleLike}>
                         <ThumbsUp className={cn("size-4", liked && "fill-current")} />
@@ -137,12 +160,13 @@ export function ChatMessage({ role, content, attachments, onRegenerate }: Messag
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-1">
-                        <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={handleSpeak} disabled={isPlaying}>
                           <Mic className="size-4" />
-                          Speak
+                          {isPlaying ? 'Speaking...' : 'Speak'}
                         </Button>
                       </PopoverContent>
                     </Popover>
+                    <audio ref={audioRef} className="hidden" />
                 </>
             )}
         </div>
