@@ -5,7 +5,6 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'zod';
 
 export const generateImage = ai.defineTool(
@@ -15,17 +14,35 @@ export const generateImage = ai.defineTool(
     inputSchema: z.object({
       prompt: z.string().describe('A detailed description of the image to generate.'),
     }),
-    outputSchema: z.string().describe('The generated image as a data URI.'),
+    outputSchema: z.string().describe('The URL of the generated image.'),
   },
   async (input) => {
     try {
       console.log(`Generating image with prompt: ${input.prompt}`);
-      const { media } = await ai.generate({
-        model: googleAI.model('imagen-4.0-fast-generate-001'),
-        prompt: input.prompt,
+      const response = await fetch('https://alexzo.vercel.app/api/generate', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer alexzo_1h5r0ouy12jeyun6f83cda',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: input.prompt,
+          width: 512,
+          height: 512
+        })
       });
-      console.log('Image generated successfully.');
-      return media.url;
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error generating image:', errorText);
+        return `Error: Failed to generate the image. API returned status ${response.status}.`;
+      }
+
+      const data = await response.json();
+      const imageUrl = data.data[0].url;
+      console.log('Image generated successfully:', imageUrl);
+      
+      return imageUrl;
     } catch (error) {
       console.error('Error generating image:', error);
       return 'Error: Failed to generate the image. Please try again with a different prompt.';

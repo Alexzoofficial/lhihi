@@ -33,19 +33,19 @@ const CodeBlock = ({ children }: { children: string }) => {
 };
 
 const renderContent = (content: string) => {
-    // Handle generated images
-    const imageRegex = /:::image\[(data:image\/[^;]+;base64,[^\]]+)\]:::/g;
+    // Handle generated images from URL
+    const imageRegex = /:::image\[(https?:\/\/[^\]]+)\]:::/g;
     
     const parts: (string | React.ReactElement)[] = [];
     let lastIndex = 0;
     
-    content.replace(imageRegex, (match, dataUri, offset) => {
+    content.replace(imageRegex, (match, imageUrl, offset) => {
         // Push the text before the image
         if (offset > lastIndex) {
             parts.push(content.substring(lastIndex, offset));
         }
         // Push the image element
-        parts.push(<Image key={offset} src={dataUri} alt="Generated image" width={300} height={300} className="rounded-md my-2" />);
+        parts.push(<Image key={offset} src={imageUrl} alt="Generated image" width={512} height={512} className="rounded-md my-2" />);
         lastIndex = offset + match.length;
         return match;
     });
