@@ -25,7 +25,9 @@ export const getPageContent = ai.defineTool(
       const response = await fetch(url);
 
       if (!response.ok) {
-        return `Error: Could not fetch search results. Status code: ${response.status}`;
+        const errorBody = await response.text();
+        console.error('Google Search API Error:', errorBody);
+        return `Error: Could not fetch search results. API returned status: ${response.status}.`;
       }
       
       const data = await response.json();
