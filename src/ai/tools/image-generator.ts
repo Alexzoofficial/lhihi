@@ -10,15 +10,20 @@ import { z } from 'zod';
 export const generateImage = ai.defineTool(
   {
     name: 'generateImage',
-    description: 'Generates an image based on a user-provided text description. Use this tool when the user asks to create, draw, or generate an image.',
+    description: 'Generates an image based on a user-provided text description. Use this tool when the user asks to create, draw, or generate an image. The user can optionally specify width and height.',
     inputSchema: z.object({
       prompt: z.string().describe('A detailed description of the image to generate.'),
+      width: z.number().optional().describe('The width of the image to generate. Defaults to 512.'),
+      height: z.number().optional().describe('The height of the image to generate. Defaults to 512.'),
     }),
     outputSchema: z.string().describe('The URL of the generated image.'),
   },
   async (input) => {
     try {
-      console.log(`Generating image with prompt: ${input.prompt}`);
+      const width = input.width || 512;
+      const height = input.height || 512;
+
+      console.log(`Generating image with prompt: ${input.prompt}, width: ${width}, height: ${height}`);
       const response = await fetch('https://alexzo.vercel.app/api/generate', {
         method: 'POST',
         headers: {
@@ -27,8 +32,8 @@ export const generateImage = ai.defineTool(
         },
         body: JSON.stringify({
           prompt: input.prompt,
-          width: 512,
-          height: 512
+          width: width,
+          height: height
         })
       });
 

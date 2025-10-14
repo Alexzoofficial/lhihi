@@ -1,4 +1,3 @@
-
 import type { Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
@@ -154,7 +153,7 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
   };
 
   return (
-    <div className={cn("flex items-start gap-4", isUser ? "justify-end" : "justify-start")}>
+    <div className={cn("flex w-full items-start gap-4", isUser ? "justify-end" : "justify-start")}>
       <div className={cn("group flex flex-col gap-1 max-w-[85%]", isUser ? "items-end" : "items-start")}>
         <div 
           className={cn(
@@ -212,7 +211,8 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuItem onClick={handleSpeak} disabled={isPlaying || !audioUrl}>
-                      <Volume2 className="size-4" />
+                      <Volume2 className="size-4 mr-2" />
+                      <span>Speak</span>
                     </DropdownMenuItem>
                     {sources && sources.length > 0 && (
                       <>
