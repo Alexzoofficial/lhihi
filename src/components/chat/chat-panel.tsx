@@ -138,7 +138,8 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   };
 
   const onSubmit = async (data: FormValues) => {
-    if (!user) {
+    // If there are attachments, user must be logged in.
+    if (data.attachments.length > 0 && !user) {
       setIsLoginDialogOpen(true);
       return;
     }
@@ -153,6 +154,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
       createdAt: new Date(),
     };
     
+    // Optimistically update UI
     const currentMessages = [...messages, userMessage];
     setMessages(currentMessages);
     form.reset();
@@ -260,10 +262,6 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   ];
   
   const onExampleQueryClick = (query: string) => {
-    if (!user) {
-      setIsLoginDialogOpen(true);
-      return;
-    }
     form.setValue('message', query);
     form.handleSubmit(onSubmit)();
   };
