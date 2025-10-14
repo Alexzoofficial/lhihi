@@ -11,7 +11,7 @@ import { ChatInput } from './chat-input';
 import { LhihiLogo } from '../icons';
 import { Button } from '../ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { UserIcon } from 'lucide-react';
+import { ChevronDown, UserIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -203,17 +203,30 @@ export default function ChatPanel() {
       </header>
       <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full px-4">
+          <div className="flex flex-col items-center justify-center h-full px-4 text-center">
+            <div className="mb-8">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="px-4 py-2 bg-muted hover:bg-muted/80">
+                    Alexzo Intelligence
+                    <ChevronDown className="ml-2 size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuLabel>Select a model</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>Alexzo Intelligence</DropdownMenuItem>
+                  <DropdownMenuItem disabled>Coming Soon</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <div className="text-center">
-              <div className="inline-block p-3 rounded-full bg-muted/70 mb-4">
-                <LhihiLogo className="size-10 text-primary" />
-              </div>
-              <h1 className="text-2xl font-semibold mb-2">
-                Alexzo Intelligence
-              </h1>
-              <p className="text-muted-foreground">
-                Your smart and helpful assistant.
-              </p>
+                <div className="inline-block p-3 rounded-full bg-muted/70 mb-4">
+                  <LhihiLogo className="size-10 text-primary" />
+                </div>
+                <h1 className="text-2xl font-semibold mb-2">
+                  How can I help you today?
+                </h1>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-3xl mt-12">
               {exampleQueries.map((query) => (

@@ -12,6 +12,14 @@ import { signInWithGoogle, signOutWithGoogle } from '@/firebase/auth';
 import { getAuth } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export function ChatSidebarContent() {
   const { user, loading } = useUser();
@@ -76,39 +84,53 @@ export function ChatSidebarContent() {
       </SidebarContent>
 
       <SidebarFooter>
-        <div className="flex flex-col gap-1 text-sm">
-          {loading ? (
-            <div className="flex items-center gap-2 px-2 py-1.5">
-              <div className="h-7 w-7 rounded-full bg-gray-600 animate-pulse" />
-              <div className="h-4 w-20 rounded bg-gray-600 animate-pulse" />
-            </div>
-          ) : user ? (
-            <>
-              <Button variant="ghost" className="w-full justify-start">
-                <Avatar className="mr-2 size-7">
-                  <AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? ''} />
-                  <AvatarFallback>
-                    {user.displayName?.charAt(0) ?? <UserIcon className="size-4" />}
-                  </AvatarFallback>
-                </Avatar>
-                <span>{user.displayName}</span>
-              </Button>
-              <Button variant="ghost" className="w-full justify-start">
-                <Settings className="mr-2 size-4" />
-                <span>Settings</span>
-              </Button>
-              <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
-                <LogOut className="mr-2 size-4" />
-                <span>Log out</span>
-              </Button>
-            </>
-          ) : (
-            <Button variant="ghost" className="w-full justify-start" onClick={handleLogin}>
-              <UserIcon className="mr-2 size-4" />
-              <span>Log in</span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="w-full justify-start text-left">
+              {loading ? (
+                <div className="flex items-center gap-2 w-full">
+                  <div className="h-7 w-7 rounded-full bg-gray-600 animate-pulse" />
+                  <div className="h-4 w-20 rounded bg-gray-600 animate-pulse" />
+                </div>
+              ) : user ? (
+                <div className="flex items-center gap-2 w-full">
+                  <Avatar className="size-7">
+                    <AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? ''} />
+                    <AvatarFallback>
+                      {user.displayName?.charAt(0) ?? <UserIcon className="size-4" />}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className='truncate'>{user.displayName}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 w-full">
+                  <UserIcon className="size-5" />
+                  <span>Log in</span>
+                </div>
+              )}
             </Button>
-          )}
-        </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-[var(--sidebar-width)] mb-2" side="top" align="start">
+            {user ? (
+              <>
+                <DropdownMenuItem>
+                  <Settings className="mr-2 size-4" />
+                  <span>Settings</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 size-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <DropdownMenuItem onClick={handleLogin}>
+                <UserIcon className="mr-2 size-4" />
+                <span>Log in with Google</span>
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarFooter>
     </>
   );
