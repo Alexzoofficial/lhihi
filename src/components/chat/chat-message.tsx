@@ -1,3 +1,4 @@
+
 import type { Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
@@ -55,8 +56,8 @@ export function ChatMessage({ role, content, attachments }: Message) {
           className={cn(
             "p-3 rounded-2xl", 
             isUser 
-              ? "bg-primary text-primary-foreground rounded-br-none" 
-              : "bg-muted rounded-bl-none"
+              ? "bg-muted text-foreground rounded-br-none" 
+              : "bg-transparent rounded-bl-none"
           )}
         >
           {content && <div className="text-sm text-inherit whitespace-pre-wrap">{renderContent(content)}</div>}
