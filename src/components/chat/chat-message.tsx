@@ -2,10 +2,11 @@
 import type { Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { Paperclip, Copy } from 'lucide-react';
+import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, MoreVertical, Edit, Mic } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const CodeBlock = ({ children }: { children: string }) => {
   const { toast } = useToast();
@@ -34,12 +35,13 @@ const CodeBlock = ({ children }: { children: string }) => {
   );
 };
 
-
 const renderContent = (content: string) => {
-    const parts = content.split(/(```[\s\S]*?```)/g);
+    // Look for ``` followed by a language name and a newline, then content, then ```
+    const parts = content.split(/(```(?:\w+\n)?[\s\S]*?```)/g);
     return parts.map((part, index) => {
-      if (part.startsWith('```') && part.endsWith('```')) {
-        const code = part.slice(3, -3).trim();
+      if (part.startsWith('```')) {
+        // Remove the backticks and optional language identifier
+        const code = part.replace(/^```\w*\n?/, '').replace(/```$/, '').trim();
         return <CodeBlock key={index}>{code}</CodeBlock>;
       }
       return <span key={index}>{part}</span>;
@@ -48,9 +50,18 @@ const renderContent = (content: string) => {
 
 export function ChatMessage({ role, content, attachments }: Message) {
   const isUser = role === 'user';
+  const { toast } = useToast();
+
+  const handleCopy = () => {
+    if (content) {
+      navigator.clipboard.writeText(content).then(() => {
+        toast({ title: 'Copied to clipboard' });
+      });
+    }
+  };
 
   return (
-    <div className={cn("flex items-start gap-4", isUser ? "justify-end" : "justify-start")}>
+    <div className={cn("flex items-start gap-4 group/message", isUser ? "justify-end" : "justify-start")}>
       <div className={cn("flex flex-col gap-1 max-w-[85%]", isUser ? "items-end" : "items-start")}>
         <div 
           className={cn(
@@ -83,6 +94,46 @@ export function ChatMessage({ role, content, attachments }: Message) {
               ))}
             </div>
           )}
+        </div>
+        <div className="flex items-center gap-2 opacity-0 group-hover/message:opacity-100 transition-opacity">
+            {isUser ? (
+                <>
+                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <Edit className="size-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy}>
+                        <Copy className="size-4" />
+                    </Button>
+                </>
+            ) : (
+                <>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy}>
+                        <Copy className="size-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <ThumbsUp className="size-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <ThumbsDown className="size-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <RefreshCw className="size-4" />
+                    </Button>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <MoreVertical className="size-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-1">
+                        <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                          <Mic className="size-4" />
+                          Speak
+                        </Button>
+                      </PopoverContent>
+                    </Popover>
+                </>
+            )}
         </div>
       </div>
     </div>
