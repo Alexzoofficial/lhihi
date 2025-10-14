@@ -2,10 +2,9 @@
 import type { Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, MoreVertical, Edit, Mic, Check } from 'lucide-react';
+import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, Volume2, Edit, Check } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useState, useRef } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { textToSpeech } from '@/ai/flows/text-to-speech';
 
 const CodeBlock = ({ children }: { children: string }) => {
@@ -81,10 +80,16 @@ export function ChatMessage({ role, content, attachments, onRegenerate }: Messag
     setIsPlaying(true);
     try {
         const { audio } = await textToSpeech(content);
+        const audioBlob = await (await fetch(audio)).blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+
         if (audioRef.current) {
-            audioRef.current.src = audio;
+            audioRef.current.src = audioUrl;
             audioRef.current.play();
-            audioRef.current.onended = () => setIsPlaying(false);
+            audioRef.current.onended = () => {
+              setIsPlaying(false);
+              URL.revokeObjectURL(audioUrl);
+            }
         }
     } catch (error) {
         console.error("Error generating speech:", error);
@@ -153,19 +158,9 @@ export function ChatMessage({ role, content, attachments, onRegenerate }: Messag
                             <RefreshCw className="size-4" />
                         </Button>
                     )}
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                          <MoreVertical className="size-4" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-1">
-                        <Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={handleSpeak} disabled={isPlaying}>
-                          <Mic className="size-4" />
-                          {isPlaying ? 'Speaking...' : 'Speak'}
-                        </Button>
-                      </PopoverContent>
-                    </Popover>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleSpeak} disabled={isPlaying}>
+                      <Volume2 className="size-4" />
+                    </Button>
                     <audio ref={audioRef} className="hidden" />
                 </>
             )}
