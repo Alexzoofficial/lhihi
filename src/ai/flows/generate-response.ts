@@ -10,7 +10,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z}from 'genkit';
 import { getPageContent } from '@/ai/tools/web-browser';
 import { generateImage } from '@/ai/tools/image-generator';
 import { searchYouTube } from '@/ai/tools/youtube-search';
