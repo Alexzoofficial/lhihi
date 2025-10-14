@@ -22,23 +22,19 @@ export function ChatMessages({ messages, isResponding }: ChatMessagesProps) {
 
   return (
     <div className="py-6 md:py-10">
-        <div className="space-y-6 max-w-3xl mx-auto w-full px-4" ref={scrollAreaRef}>
+        <div className="space-y-4 max-w-3xl mx-auto w-full px-4" ref={scrollAreaRef}>
         {messages.map((message) => (
             <ChatMessage key={message.id} {...message} />
         ))}
         {isResponding && (
-            <div className="flex items-start gap-4 p-4">
-                <Avatar className="w-8 h-8 border">
-                    <AvatarFallback className='bg-primary/10'>
-                        <LhihiLogo className="text-primary" />
-                    </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 space-y-2 pt-1">
-                    <p className="font-semibold text-sm">lhihi AI</p>
-                    <div className="flex flex-col gap-2">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-4 w-48" />
+            <div className="flex items-start gap-4">
+                <div className="flex flex-col gap-2 p-3 rounded-2xl bg-muted rounded-bl-none">
+                    <div className="flex items-center gap-2">
+                        <Skeleton className="h-4 w-4 rounded-full" />
+                        <Skeleton className="h-4 w-16" />
                     </div>
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-4 w-32" />
                 </div>
             </div>
         )}
