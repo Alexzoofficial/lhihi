@@ -33,6 +33,23 @@ const CodeBlock = ({ children }: { children: string }) => {
 };
 
 const renderContent = (content: string) => {
+    // Handle generated images
+    const imageRegex = /:::image\[(data:image\/[^;]+;base64,[^\]]+)\]:::/g;
+    const imageParts = content.split(imageRegex);
+
+    if (imageParts.length > 1) {
+        return imageParts.map((part, index) => {
+            if (index % 2 === 1) { // This is the image data URI
+                return <Image key={index} src={part} alt="Generated image" width={300} height={300} className="rounded-md my-2" />;
+            }
+            return <div key={index}>{renderText(part)}</div>;
+        });
+    }
+
+    return renderText(content);
+}
+
+const renderText = (content: string) => {
     const parts = content.split(/(```(?:\w+\n)?[\s\S]*?```)/g);
     return parts.map((part, index) => {
       if (part.startsWith('```')) {
