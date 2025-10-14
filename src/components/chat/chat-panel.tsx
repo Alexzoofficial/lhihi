@@ -225,7 +225,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
       createdAt: new Date(),
     };
     
-    let currentMessages = [...messages, userMessage];
+    const currentMessages = [...messages, userMessage];
     setMessages(currentMessages);
     form.reset();
 
@@ -263,30 +263,37 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
     setIsResponding(false);
 
     if (user && firestore && activeChatId) {
-        currentMessages.pop(); // Remove the temp user message
-        const finalAssistantMessage = { ...assistantMessage, id: uuidv4() }; // Create a new object for state
-        setMessages(prev => [...prev, finalAssistantMessage]);
-
-        const assistantMessageRef = await addDoc(collection(firestore, `users/${user.uid}/chats/${activeChatId}/messages`), {
-          ...finalAssistantMessage,
-          createdAt: serverTimestamp()
-        });
-
-        await updateDoc(assistantMessageRef, { id: assistantMessageRef.id });
-        finalAssistantMessage.id = assistantMessageRef.id; // Update the ID in the object
-
-        if (finalAssistantMessage.content) {
-            textToSpeech(finalAssistantMessage.content).then(async (ttsResult) => {
-                finalAssistantMessage.audioUrl = ttsResult.audio;
-                setMessages(prev => prev.map(m => m.id === finalAssistantMessage.id ? finalAssistantMessage : m));
-                await updateDoc(assistantMessageRef, { audioUrl: ttsResult.audio });
-            }).catch(err => console.error("TTS generation failed:", err));
-        }
-
+      // The onSnapshot listener will automatically update the UI with new messages,
+      // so we only need to add the assistant message to Firestore.
+      const assistantMessageRef = await addDoc(collection(firestore, `users/${user.uid}/chats/${activeChatId}/messages`), {
+        ...assistantMessage,
+        id: '', // Will be replaced by Firestore
+        createdAt: serverTimestamp(),
+      });
+  
+      await updateDoc(assistantMessageRef, { id: assistantMessageRef.id });
+  
+      if (assistantMessage.content) {
+        textToSpeech(assistantMessage.content)
+          .then(async (ttsResult) => {
+            await updateDoc(assistantMessageRef, { audioUrl: ttsResult.audio });
+          })
+          .catch((err) => console.error("TTS generation failed:", err));
+      }
     } else {
         // Handle local-only chat
-        currentMessages.pop();
         setMessages(prev => [...prev, assistantMessage]);
+
+        if (assistantMessage.content) {
+            textToSpeech(assistantMessage.content).then(ttsResult => {
+                setMessages(prev => prev.map(m => {
+                    if (m.id === assistantMessage.id) {
+                        return { ...m, audioUrl: ttsResult.audio };
+                    }
+                    return m;
+                }));
+            }).catch(err => console.error("TTS generation failed:", err));
+        }
     }
   };
   
