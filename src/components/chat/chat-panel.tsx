@@ -11,7 +11,7 @@ import { ChatInput } from './chat-input';
 import { LhihiLogo } from '../icons';
 import { Button } from '../ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Check, ChevronDown, UserIcon } from 'lucide-react';
+import { ChevronDown, UserIcon, Check } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +29,8 @@ import { getAuth } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { addDoc, collection, serverTimestamp, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { GoogleIcon } from '../icons';
 
 
 const formSchema = z
@@ -50,10 +52,12 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   const { toast } = useToast();
   const { firestore } = useFirebase();
   const [model, setModel] = useState('alexzo');
+  const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
+
 
   useEffect(() => {
     if (!firestore || !user || !currentChatId) {
-      setMessages([]);
+      if (!user) setMessages([]); // Clear messages if user logs out
       return;
     };
 
@@ -94,6 +98,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   const handleLogin = async () => {
     try {
       await signInWithGoogle();
+      setIsLoginDialogOpen(false);
       toast({
         title: 'Success',
         description: 'You have been logged in.',
@@ -138,7 +143,8 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
       attachments: data.attachments,
       createdAt: new Date(),
     };
-
+    
+    // Optimistically update UI
     const currentMessages = [...messages, userMessage];
     setMessages(currentMessages);
     form.reset();
@@ -161,19 +167,18 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
             return;
         }
       }
+
+      try {
+        await addDoc(collection(firestore, `users/${user.uid}/chats/${activeChatId}/messages`), {
+            ...userMessage,
+            createdAt: serverTimestamp() // Use server timestamp for Firestore
+        });
+      } catch (error) {
+          console.error("Error saving user message:", error);
+          toast({ variant: 'destructive', title: 'Error', description: 'Could not save your message.' });
+      }
     }
 
-    if (user && firestore && activeChatId) {
-        try {
-            await addDoc(collection(firestore, `users/${user.uid}/chats/${activeChatId}/messages`), {
-                ...userMessage,
-                createdAt: serverTimestamp() // Use server timestamp for Firestore
-            });
-        } catch (error) {
-            console.error("Error saving user message:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not save your message.' });
-        }
-    }
 
     const conversationHistory = currentMessages
       .map((msg) => `${msg.role}: ${msg.content}`)
@@ -236,10 +241,10 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   };
 
   const exampleQueries = [
-    'Create a futuristic story about AI and humanity',
-    'Explain quantum computing like I\'m five',
-    'Plan a 3-day itinerary for a trip to Tokyo',
-    'Write a Python script to scrape a website',
+    'Future of AI',
+    'Quantum computing basics',
+    '3-day Tokyo trip',
+    'Web scraping with Python',
   ];
   
   const onExampleQueryClick = (query: string) => {
@@ -248,30 +253,36 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   };
 
   return (
+    <>
     <main className="flex flex-col h-full max-h-screen">
       <header className="flex items-center justify-between p-2 border-b">
         <div className="flex items-center gap-2">
-            <SidebarTrigger className="md:hidden" />
+          <SidebarTrigger className="md:hidden" />
+          <div className="flex-1 text-center md:text-left">
             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="px-4 py-2 text-lg font-semibold bg-muted hover:bg-muted/80">
-                        Alexzo Intelligence
-                        <ChevronDown className="ml-2 size-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                    <DropdownMenuRadioGroup value={model} onValueChange={setModel}>
-                        <DropdownMenuRadioItem value="alexzo">
-                            Alexzo Intelligence
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuItem disabled>Coming Soon</DropdownMenuItem>
-                    </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="px-4 py-2 text-lg font-semibold hover:bg-muted/80">
+                  Alexzo Intelligence
+                  <ChevronDown className="ml-2 size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuRadioGroup value={model} onValueChange={setModel}>
+                  <DropdownMenuRadioItem value="alexzo">
+                    <div className="flex items-center justify-between w-full">
+                      <span>Alexzo Intelligence</span>
+                      {model === 'alexzo' && <Check className="ml-2 size-4" />}
+                    </div>
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuItem disabled>Coming Soon</DropdownMenuItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
             </DropdownMenu>
+          </div>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={() => !user && setIsLoginDialogOpen(true)}>
               {loading ? (
                 <div className="h-8 w-8 rounded-full bg-gray-300 animate-pulse" />
               ) : user ? (
@@ -286,20 +297,16 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            {user ? (
-              <>
+          {user && (
+            <DropdownMenuContent>
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem disabled>Profile</DropdownMenuItem>
                 <DropdownMenuItem disabled>Settings</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
-              </>
-            ) : (
-              <DropdownMenuItem onClick={handleLogin}>Log in with Google</DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
+            </DropdownMenuContent>
+           )}
         </DropdownMenu>
       </header>
       <div className="flex-1 overflow-y-auto">
@@ -345,7 +352,20 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
         </p>
       </div>
     </main>
+
+    <Dialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle className="text-center text-2xl">Log in to your account</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col items-center gap-4 py-4">
+                <Button onClick={handleLogin} className="w-full">
+                    <GoogleIcon className="mr-2 size-5" />
+                    Continue with Google
+                </Button>
+            </div>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
-
-    
