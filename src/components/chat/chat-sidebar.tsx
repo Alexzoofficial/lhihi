@@ -104,6 +104,7 @@ export function ChatSidebarContent({ onChatSelect, currentChatId, onNewChat }: {
       if (!firestore || !user) return;
       
       try {
+        // Also delete subcollection of messages
         const messagesQuery = query(collection(firestore, `users/${user.uid}/chats/${chatIdToDelete}/messages`));
         const messagesSnapshot = await getDocs(messagesQuery);
         const batch = writeBatch(firestore);
@@ -113,6 +114,7 @@ export function ChatSidebarContent({ onChatSelect, currentChatId, onNewChat }: {
         await batch.commit();
 
         await deleteDoc(doc(firestore, `users/${user.uid}/chats`, chatIdToDelete));
+        
         toast({ title: 'Chat deleted' });
         if (currentChatId === chatIdToDelete) {
           onNewChat();

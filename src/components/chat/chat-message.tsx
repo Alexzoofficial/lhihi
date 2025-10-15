@@ -312,7 +312,14 @@ export function ChatMessage({ id, role, content, attachments, onRegenerate, onAu
                           rel="noopener noreferrer"
                           className="text-xs"
                         >
-                          <Badge variant="outline" className="truncate hover:bg-accent">
+                          <Badge variant="outline" className="truncate hover:bg-accent flex items-center gap-1.5">
+                            <Image 
+                                src={`https://www.google.com/s2/favicons?domain=${new URL(source).hostname}&sz=16`}
+                                alt={`${new URL(source).hostname} favicon`}
+                                width={16}
+                                height={16}
+                                className='rounded-full'
+                            />
                             {new URL(source).hostname}
                           </Badge>
                         </a>
