@@ -16,11 +16,11 @@ export const searchYouTube = ai.defineTool(
     inputSchema: z.object({
       query: z.string().describe('The search query for YouTube.'),
     }),
-    outputSchema: z.string().describe('A formatted string summarizing the top 3 video results, including titles and links.'),
+    outputSchema: z.string().describe('A formatted string summarizing the top video result, including a thumbnail, title and link.'),
   },
   async (input) => {
     try {
-      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(input.query)}&type=video&maxResults=3&key=${GOOGLE_API_KEY}`;
+      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(input.query)}&type=video&maxResults=1&key=${GOOGLE_API_KEY}`;
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -35,11 +35,14 @@ export const searchYouTube = ai.defineTool(
         return "No relevant YouTube videos found for your query.";
       }
       
-      const searchResults = data.items.map((item: any, idx: number) => (
-        `${idx + 1}. Title: ${item.snippet.title}\n   URL: https://www.youtube.com/watch?v=${item.id.videoId}`
-      )).join('\n\n');
+      const video = data.items[0];
+      const videoId = video.id.videoId;
+      const videoTitle = video.snippet.title;
+      const thumbnailUrl = video.snippet.thumbnails.high.url;
+      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-      return `Here are the top YouTube results:\n${searchResults}`;
+      // Return a formatted string that includes the thumbnail for rendering in the UI
+      return `:::youtube[${videoUrl}|${videoTitle}|${thumbnailUrl}]:::`;
 
     } catch (error) {
       console.error('Error fetching YouTube videos:', error);

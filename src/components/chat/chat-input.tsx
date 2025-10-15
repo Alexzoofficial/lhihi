@@ -88,7 +88,7 @@ export function ChatInput({ form, onSubmit, isResponding, onFileChange, removeAt
                   <FormControl>
                     <Textarea
                       placeholder="Message lhihi AI..."
-                      className="resize-none border-0 shadow-none focus-visible:ring-0 max-h-[200px] bg-transparent"
+                      className="resize-none border-0 shadow-none focus-visible:ring-0 max-h-[500px] bg-transparent"
                       {...field}
                       ref={textareaRef}
                       onKeyDown={handleKeyDown}

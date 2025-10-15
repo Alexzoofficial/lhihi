@@ -1,7 +1,7 @@
 import type { Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, Volume2, Edit, Check, MoreVertical, List, Plus, Link as LinkIcon, LoaderCircle } from 'lucide-react';
+import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, Volume2, Edit, Check, MoreVertical, List, Plus, Link as LinkIcon, LoaderCircle, Youtube } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useState, useRef } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
@@ -40,20 +40,41 @@ const GeneratingImage = () => {
     )
 }
 
+const YouTubePreview = ({ url, title, thumbnailUrl }: { url: string; title: string; thumbnailUrl: string; }) => {
+    return (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="bg-card border rounded-lg my-2 block hover:bg-muted transition-colors">
+            <div className="relative">
+                <Image src={thumbnailUrl} alt={title} width={512} height={288} className="rounded-t-lg object-cover" />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                    <Youtube className="size-16 text-white" />
+                </div>
+            </div>
+            <div className="p-4">
+                <p className="font-semibold text-sm">{title}</p>
+                <p className="text-xs text-muted-foreground mt-1">{new URL(url).hostname}</p>
+            </div>
+        </a>
+    )
+}
+
 const renderContent = (content: string) => {
     const imageRegex = /:::image\[(https?:\/\/[^\]]+)\]:::/g;
     const generatingImageRegex = /:::generating_image\[([^\]]+)\]:::/g;
+    const youtubeRegex = /:::youtube\[(https?:\/\/[^|]+)\|([^|]+)\|([^\]]+)\]:::/g;
     
     const parts: (string | React.ReactElement)[] = [];
     let lastIndex = 0;
     
     let result;
-    const combinedRegex = new RegExp(`${imageRegex.source}|${generatingImageRegex.source}`, 'g');
+    const combinedRegex = new RegExp(`${imageRegex.source}|${generatingImageRegex.source}|${youtubeRegex.source}`, 'g');
 
     while ((result = combinedRegex.exec(content)) !== null) {
       const match = result[0];
       const imageUrl = result[1];
       const isGenerating = result[2] !== undefined;
+      const youtubeUrl = result[3];
+      const youtubeTitle = result[4];
+      const youtubeThumbnail = result[5];
       const offset = result.index;
 
       if (offset > lastIndex) {
@@ -64,12 +85,13 @@ const renderContent = (content: string) => {
         parts.push(<GeneratingImage key={offset} />);
       } else if (imageUrl) {
         parts.push(<Image key={offset} src={imageUrl} alt="Generated image" width={512} height={512} className="rounded-md my-2" />);
+      } else if (youtubeUrl) {
+          parts.push(<YouTubePreview key={offset} url={youtubeUrl} title={youtubeTitle} thumbnailUrl={youtubeThumbnail} />);
       }
       
       lastIndex = offset + match.length;
     }
 
-    // Push any remaining text after the last match
     if (lastIndex < content.length) {
         parts.push(content.substring(lastIndex));
     }
@@ -114,7 +136,7 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
 
   const handleCopy = () => {
     if (content) {
-      navigator.clipboard.writeText(content.replace(/:+:generating_image\[.*?\]:+:/g, '')).then(() => {
+      navigator.clipboard.writeText(content.replace(/:+:(generating_image|image|youtube)\[.*?\]:+:/g, '')).then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       });
