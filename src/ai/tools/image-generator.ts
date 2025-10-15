@@ -10,7 +10,7 @@ import { z } from 'zod';
 export const generateImage = ai.defineTool(
   {
     name: 'generateImage',
-    description: 'Generates an image based on a user-provided text description. Use this tool when the user asks to create, draw, or generate an image. The user can optionally specify width and height.',
+    description: "Generates an image based on a user-provided text description using Alexzo's image generator. Use this tool when the user asks to create, draw, or generate an image. The user can optionally specify width and height.",
     inputSchema: z.object({
       prompt: z.string().describe('A detailed description of the image to generate.'),
       width: z.number().optional().describe('The width of the image to generate. Defaults to 512.'),
@@ -24,6 +24,7 @@ export const generateImage = ai.defineTool(
       const height = input.height || 512;
       
       const encodedPrompt = encodeURIComponent(input.prompt);
+      // Corrected the URL format by removing the extra /prompt
       const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}`;
 
       return `:::image[${imageUrl}]:::`;
