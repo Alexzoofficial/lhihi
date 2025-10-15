@@ -1,3 +1,4 @@
+
 'use client';
 import { Button } from '@/components/ui/button';
 import { LhihiLogo, UserIcon } from '@/components/icons';
@@ -28,7 +29,7 @@ interface Chat {
     name: string;
 }
 
-export function ChatSidebarContent({ onChatSelect, currentChatId, onNewChat }: { onChatSelect: (id: string) => void; currentChatId: string | null; onNewChat: () => void; }) {
+export function ChatSidebarContent({ onChatSelect, currentChatId, onNewChat }: { onChatSelect: (id: string | null) => void; currentChatId: string | null; onNewChat: () => void; }) {
   const { user, loading } = useUser();
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -232,5 +233,3 @@ export function ChatSidebarContent({ onChatSelect, currentChatId, onNewChat }: {
     </>
   );
 }
-
-    
