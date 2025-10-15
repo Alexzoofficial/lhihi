@@ -18,6 +18,7 @@ export type Message = {
   onRegenerate?: () => void;
   onSelectQuery?: (query: string) => void;
   onAudioGenerated?: (messageId: string, audioUrl: string) => void;
+  onEdit?: (newContent: string) => void;
   audioUrl?: string;
   relatedQueries?: string[];
   sources?: string[];

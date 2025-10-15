@@ -10,9 +10,10 @@ interface ChatMessagesProps {
   onRegenerate: (messageIndex: number) => void;
   onSelectQuery: (query: string) => void;
   onAudioGenerated: (messageId: string, audioUrl: string) => void;
+  onEditMessage: (messageId: string, newContent: string) => void;
 }
 
-export function ChatMessages({ messages, isResponding, onRegenerate, onSelectQuery, onAudioGenerated }: ChatMessagesProps) {
+export function ChatMessages({ messages, isResponding, onRegenerate, onSelectQuery, onAudioGenerated, onEditMessage }: ChatMessagesProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export function ChatMessages({ messages, isResponding, onRegenerate, onSelectQue
               onRegenerate={message.role === 'assistant' ? () => onRegenerate(index) : undefined}
               onSelectQuery={onSelectQuery}
               onAudioGenerated={onAudioGenerated}
+              onEdit={message.role === 'user' ? (newContent: string) => onEditMessage(message.id, newContent) : undefined}
             />
         ))}
         {isResponding && (

@@ -312,6 +312,50 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
     form.setValue('attachments', newAttachments);
   };
 
+  const handleEditMessage = async (messageId: string, newContent: string) => {
+    const messageIndex = messages.findIndex(m => m.id === messageId);
+    if (messageIndex === -1) return;
+
+    // Optimistically update the UI
+    const updatedMessages = [...messages];
+    updatedMessages[messageIndex].content = newContent;
+    setMessages(updatedMessages);
+
+    // Update in Firestore
+    if (user && firestore && currentChatId) {
+      try {
+        const messageRef = doc(firestore, `users/${user.uid}/chats/${currentChatId}/messages`, messageId);
+        await updateDoc(messageRef, { content: newContent });
+      } catch (error) {
+        console.error("Error editing message:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save your changes.' });
+        // Revert optimistic update on error
+        setMessages(messages);
+      }
+    }
+    
+    // Regenerate response from the assistant
+    const messagesForRegeneration = updatedMessages.slice(0, messageIndex + 1);
+    
+    setIsResponding(true);
+    // Remove messages after the edited one
+    setMessages(messagesForRegeneration);
+    
+    const assistantMessage = await processResponse(newContent, messagesForRegeneration);
+    setIsResponding(false);
+
+     if (user && firestore && currentChatId) {
+        const assistantMessageRef = await addDoc(collection(firestore, `users/${user.uid}/chats/${currentChatId}/messages`), {
+            ...assistantMessage,
+            createdAt: serverTimestamp(),
+        });
+        await updateDoc(assistantMessageRef, { id: assistantMessageRef.id });
+    } else {
+        setMessages(prev => [...prev, assistantMessage]);
+    }
+
+  };
+
   const exampleQueries = [
     'Write a story about a lost star',
     'Explain quantum computing simply',
@@ -409,7 +453,14 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
             </div>
           </div>
         ) : (
-          <ChatMessages messages={messages} isResponding={isResponding} onRegenerate={handleRegenerate} onSelectQuery={handleSelectQuery} onAudioGenerated={handleAudioGenerated} />
+          <ChatMessages 
+            messages={messages} 
+            isResponding={isResponding} 
+            onRegenerate={handleRegenerate} 
+            onSelectQuery={handleSelectQuery} 
+            onAudioGenerated={handleAudioGenerated}
+            onEditMessage={handleEditMessage}
+          />
         )}
       </div>
       <div className="p-4 md:p-6 bg-transparent">
