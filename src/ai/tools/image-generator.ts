@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview A tool for generating images from a text prompt.
+ * @fileOverview A tool for generating images from a text prompt using pollinations.ai.
  */
 
 import { ai } from '@/ai/genkit';
@@ -22,37 +22,13 @@ export const generateImage = ai.defineTool(
     try {
       const width = input.width || 512;
       const height = input.height || 512;
-
-      const response = await fetch('https://alexzo.vercel.app/api/generate', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer alexzo_1h5r0ouy12jeyun6f83cda',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          prompt: input.prompt,
-          width: width,
-          height: height
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error generating image:', errorText);
-        return `Error: Failed to generate the image. The image generation API returned an error: ${response.status}.`;
-      }
-
-      const data = await response.json();
-      if (data && data.data && data.data.length > 0 && data.data[0].url) {
-        const imageUrl = data.data[0].url;
-        return `:::image[${imageUrl}]:::`;
-      } else {
-        console.error('Error generating image: Invalid API response format.');
-        return 'Error: Failed to parse the image URL from the API response.';
-      }
       
+      const encodedPrompt = encodeURIComponent(input.prompt);
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}`;
+
+      return `:::image[${imageUrl}]:::`;
     } catch (error) {
-      console.error('Error generating image:', error);
+      console.error('Error generating image with pollinations.ai:', error);
       return 'Error: An unexpected error occurred while trying to generate the image.';
     }
   }
