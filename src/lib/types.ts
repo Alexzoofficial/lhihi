@@ -17,6 +17,7 @@ export type Message = {
   createdAt: FieldValue | Date;
   onRegenerate?: () => void;
   onSelectQuery?: (query: string) => void;
+  onAudioGenerated?: (messageId: string, audioUrl: string) => void;
   audioUrl?: string;
   relatedQueries?: string[];
   sources?: string[];

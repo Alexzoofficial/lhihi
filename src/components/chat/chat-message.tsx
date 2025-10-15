@@ -6,6 +6,8 @@ import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, Volume2, Edit, Check,
 import { Button } from '../ui/button';
 import { useState, useRef } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
+import { textToSpeech } from '@/ai/flows/text-to-speech';
+import { useToast } from '@/hooks/use-toast';
 
 const CodeBlock = ({ children }: { children: string }) => {
   const [copied, setCopied] = useState(false);
@@ -127,13 +129,14 @@ const renderText = (content: string) => {
 };
 
 
-export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl, relatedQueries, onSelectQuery, sources }: Message) {
+export function ChatMessage({ id, role, content, attachments, onRegenerate, onAudioGenerated, audioUrl, relatedQueries, onSelectQuery, sources }: Message) {
   const isUser = role === 'user';
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const { toast } = useToast();
 
   const handleCopy = () => {
     if (content) {
@@ -154,23 +157,47 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
       if (liked) setLiked(false);
   }
   
-  const handleSpeak = () => {
-    if (!audioUrl || isPlaying) return;
-
-    const audio = audioRef.current || new Audio(audioUrl);
+  const playAudio = (url: string) => {
+    const audio = audioRef.current || new Audio(url);
     if (!audioRef.current) {
         (audioRef as React.MutableRefObject<HTMLAudioElement>).current = audio;
+        audio.src = url;
     }
     
-    setIsPlaying(true);
+    setIsSpeaking(true);
     
     audio.play().catch(e => {
         console.error("Audio playback failed:", e);
-        setIsPlaying(false);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not play audio.' });
+        setIsSpeaking(false);
     });
 
     audio.onended = () => {
-      setIsPlaying(false);
+      setIsSpeaking(false);
+    }
+  }
+
+  const handleSpeak = async () => {
+    if (isSpeaking || !content) return;
+
+    if (audioUrl) {
+      playAudio(audioUrl);
+      return;
+    }
+
+    setIsSpeaking(true); // Show loading state immediately
+    try {
+      const ttsResult = await textToSpeech(content);
+      if (ttsResult?.audio) {
+        onAudioGenerated?.(id, ttsResult.audio);
+        playAudio(ttsResult.audio);
+      } else {
+        throw new Error('Audio data was empty.');
+      }
+    } catch (error: any) {
+        console.error("TTS generation failed:", error);
+        toast({ variant: 'destructive', title: 'Text-to-Speech Error', description: error.message || 'Could not generate audio.' });
+        setIsSpeaking(false); // Reset loading state on error
     }
   };
 
@@ -232,9 +259,9 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem onClick={handleSpeak} disabled={isPlaying || !audioUrl}>
-                      <Volume2 className="size-4 mr-2" />
-                      <span>Speak</span>
+                    <DropdownMenuItem onClick={handleSpeak} disabled={isSpeaking}>
+                      {isSpeaking && !audioUrl ? <LoaderCircle className="size-4 mr-2 animate-spin" /> : <Volume2 className="size-4 mr-2" />}
+                      <span>{isSpeaking ? 'Loading...' : 'Speak'}</span>
                     </DropdownMenuItem>
                     {sources && sources.length > 0 && (
                       <>
@@ -247,7 +274,7 @@ export function ChatMessage({ role, content, attachments, onRegenerate, audioUrl
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <audio ref={audioRef} src={audioUrl} preload="auto" className="hidden" />
+                <audio ref={audioRef} preload="none" className="hidden" />
             </div>
         )}
 

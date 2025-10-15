@@ -1,11 +1,11 @@
+
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { generateResponse } from '@/ai/flows/generate-response';
-import { textToSpeech } from '@/ai/flows/text-to-speech';
 import type { Message, Attachment } from '@/lib/types';
 import { ChatMessages } from './chat-messages';
 import { ChatInput } from './chat-input';
@@ -182,19 +182,6 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
 
     const assistantMessage = await processResponse(lastUserMessage.content, messagesToResend);
     
-    // Pre-generate audio for the new message
-    if (assistantMessage.content) {
-        textToSpeech(assistantMessage.content).then(ttsResult => {
-            assistantMessage.audioUrl = ttsResult.audio;
-            // Update message in state and Firestore with audioUrl
-            setMessages(prev => prev.map(m => m.id === assistantMessage.id ? assistantMessage : m));
-            if (user && firestore && currentChatId) {
-                const messageRef = doc(firestore, `users/${user.uid}/chats/${currentChatId}/messages`, assistantMessage.id);
-                updateDoc(messageRef, { audioUrl: ttsResult.audio });
-            }
-        });
-    }
-    
     setMessages(prev => [...prev, assistantMessage]);
 
     if (user && firestore && currentChatId) {
@@ -263,8 +250,6 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
     setIsResponding(false);
 
     if (user && firestore && activeChatId) {
-      // The onSnapshot listener will automatically update the UI with new messages,
-      // so we only need to add the assistant message to Firestore.
       const assistantMessageRef = await addDoc(collection(firestore, `users/${user.uid}/chats/${activeChatId}/messages`), {
         ...assistantMessage,
         id: '', // Will be replaced by Firestore
@@ -273,30 +258,30 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   
       await updateDoc(assistantMessageRef, { id: assistantMessageRef.id });
   
-      if (assistantMessage.content) {
-        textToSpeech(assistantMessage.content)
-          .then(async (ttsResult) => {
-            await updateDoc(assistantMessageRef, { audioUrl: ttsResult.audio });
-          })
-          .catch((err) => console.error("TTS generation failed:", err));
-      }
     } else {
         // Handle local-only chat
         setMessages(prev => [...prev, assistantMessage]);
-
-        if (assistantMessage.content) {
-            textToSpeech(assistantMessage.content).then(ttsResult => {
-                setMessages(prev => prev.map(m => {
-                    if (m.id === assistantMessage.id) {
-                        return { ...m, audioUrl: ttsResult.audio };
-                    }
-                    return m;
-                }));
-            }).catch(err => console.error("TTS generation failed:", err));
-        }
     }
   };
   
+  const handleAudioGenerated = useCallback(async (messageId: string, audioUrl: string) => {
+    // Update local state first for immediate feedback
+    setMessages(prev => 
+      prev.map(m => m.id === messageId ? { ...m, audioUrl } : m)
+    );
+
+    // Then, update Firestore if applicable
+    if (user && firestore && currentChatId) {
+      try {
+        const messageRef = doc(firestore, `users/${user.uid}/chats/${currentChatId}/messages`, messageId);
+        await updateDoc(messageRef, { audioUrl });
+      } catch (error) {
+        console.error("Failed to save audio URL to Firestore:", error);
+        // Optional: Show a toast, but avoid being too noisy.
+      }
+    }
+  }, [user, firestore, currentChatId]);
+
   const handleSelectQuery = (query: string) => {
     form.setValue('message', query);
     form.handleSubmit(onSubmit)();
@@ -424,7 +409,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
             </div>
           </div>
         ) : (
-          <ChatMessages messages={messages} isResponding={isResponding} onRegenerate={handleRegenerate} onSelectQuery={handleSelectQuery} />
+          <ChatMessages messages={messages} isResponding={isResponding} onRegenerate={handleRegenerate} onSelectQuery={handleSelectQuery} onAudioGenerated={handleAudioGenerated} />
         )}
       </div>
       <div className="p-4 md:p-6 bg-transparent">
