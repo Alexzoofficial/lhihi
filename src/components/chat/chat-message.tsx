@@ -8,6 +8,7 @@ import { useState, useRef } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { textToSpeech } from '@/ai/flows/text-to-speech';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '../ui/badge';
 
 const CodeBlock = ({ children }: { children: string }) => {
   const [copied, setCopied] = useState(false);
@@ -252,29 +253,34 @@ export function ChatMessage({ id, role, content, attachments, onRegenerate, onAu
                         <RefreshCw className="size-4" />
                     </Button>
                 )}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                      <MoreVertical className="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={handleSpeak} disabled={isSpeaking}>
-                      {isSpeaking && !audioUrl ? <LoaderCircle className="size-4 mr-2 animate-spin" /> : <Volume2 className="size-4 mr-2" />}
-                      <span>{isSpeaking ? 'Loading...' : 'Speak'}</span>
-                    </DropdownMenuItem>
-                    {sources && sources.length > 0 && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          <LinkIcon className="size-4 mr-2" />
-                          Sources ({sources.length})
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleSpeak}>
+                    {isSpeaking ? <LoaderCircle className="size-4 animate-spin" /> : <Volume2 className="size-4" />}
+                </Button>
                 <audio ref={audioRef} preload="none" className="hidden" />
+            </div>
+        )}
+        
+        {!isUser && sources && sources.length > 0 && (
+            <div className="mt-2 w-full max-w-[85%]">
+                <div className="flex items-center gap-2 mb-2">
+                    <LinkIcon className="size-4 text-muted-foreground" />
+                    <h3 className="text-sm font-semibold">Sources</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {sources.map((source, index) => (
+                        <a
+                          key={index}
+                          href={source}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs"
+                        >
+                          <Badge variant="outline" className="truncate hover:bg-accent">
+                            {new URL(source).hostname}
+                          </Badge>
+                        </a>
+                    ))}
+                </div>
             </div>
         )}
 
@@ -313,3 +319,5 @@ export function ChatMessage({ id, role, content, attachments, onRegenerate, onAu
     </div>
   );
 }
+
+    
