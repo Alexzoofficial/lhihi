@@ -29,7 +29,7 @@ export function ChatInput({ form, onSubmit, isResponding, onFileChange, removeAt
   }, [message]);
   
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Enter' && event.shiftKey && !isResponding && (form.getValues('message') || form.getValues('attachments').length > 0)) {
+    if (event.key === 'Enter' && !event.shiftKey && !isResponding && (form.getValues('message') || form.getValues('attachments').length > 0)) {
       event.preventDefault();
       form.handleSubmit(onSubmit)();
     }
@@ -88,7 +88,7 @@ export function ChatInput({ form, onSubmit, isResponding, onFileChange, removeAt
                 <FormItem className="flex-1">
                   <FormControl>
                     <Textarea
-                      placeholder="Message lhihi AI... (Shift+Enter to send)"
+                      placeholder="Message lhihi AI... (Shift+Enter for new line)"
                       className="resize-none border-0 shadow-none focus-visible:ring-0 max-h-[500px] bg-transparent"
                       {...field}
                       ref={textareaRef}
