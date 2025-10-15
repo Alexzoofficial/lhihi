@@ -14,9 +14,10 @@ interface ChatInputProps {
   isResponding: boolean;
   onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   removeAttachment: (index: number) => void;
+  onMessageChange: (value: string) => void;
 }
 
-export function ChatInput({ form, onSubmit, isResponding, onFileChange, removeAttachment }: ChatInputProps) {
+export function ChatInput({ form, onSubmit, isResponding, onFileChange, removeAttachment, onMessageChange }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { message, attachments } = form.watch();
@@ -88,9 +89,13 @@ export function ChatInput({ form, onSubmit, isResponding, onFileChange, removeAt
                 <FormItem className="flex-1">
                   <FormControl>
                     <Textarea
-                      placeholder="Message lhihi AI... (Shift+Enter for new line)"
+                      placeholder="Ask lhihi AI..."
                       className="resize-none border-0 shadow-none focus-visible:ring-0 max-h-[200px] bg-transparent"
                       {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        onMessageChange(e.target.value);
+                      }}
                       ref={textareaRef}
                       onKeyDown={handleKeyDown}
                       rows={1}

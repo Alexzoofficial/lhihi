@@ -32,6 +32,7 @@ import { addDoc, collection, serverTimestamp, onSnapshot, query, orderBy, update
 import { v4 as uuidv4 } from 'uuid';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { GoogleIcon } from '../icons';
+import { Suggestions } from './suggestions';
 
 const formSchema = z
   .object({
@@ -53,6 +54,8 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   const { firestore } = useFirebase();
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
   const [model, setModel] = useState('alexzo-intelligence');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
 
   useEffect(() => {
@@ -203,6 +206,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
     }
     
     setIsResponding(true);
+    setShowSuggestions(false);
 
     const userMessage: Message = {
       id: uuidv4(),
@@ -284,6 +288,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
 
   const handleSelectQuery = (query: string) => {
     form.setValue('message', query);
+    setShowSuggestions(false);
     form.handleSubmit(onSubmit)();
   };
 
@@ -367,6 +372,25 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
     form.setValue('message', query);
     form.handleSubmit(onSubmit)();
   };
+
+  const handleMessageChange = async (value: string) => {
+    if (value.length > 1) {
+      setSuggestions([
+          `${value} explained`,
+          `what is the history of ${value}`,
+          `write a poem about ${value}`
+      ])
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSelectSuggestion = (suggestion: string) => {
+    form.setValue('message', suggestion);
+    setShowSuggestions(false);
+    form.handleSubmit(onSubmit)();
+  }
 
   return (
     <>
@@ -463,13 +487,20 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
           />
         )}
       </div>
-      <div className="p-4 md:p-6 bg-transparent">
+      <div className="p-4 md:p-6 bg-transparent relative">
+        {showSuggestions && (
+          <Suggestions
+            suggestions={suggestions}
+            onSelectSuggestion={handleSelectSuggestion}
+          />
+        )}
         <ChatInput
           form={form}
           onSubmit={form.handleSubmit(onSubmit)}
           isResponding={isResponding}
           onFileChange={handleFileChange}
           removeAttachment={removeAttachment}
+          onMessageChange={handleMessageChange}
         />
         <p className="text-center text-xs text-muted-foreground mt-3">
           lhihi AI can make mistakes. Consider checking important information.
