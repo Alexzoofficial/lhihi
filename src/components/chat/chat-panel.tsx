@@ -362,10 +362,10 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   };
 
   const exampleQueries = [
-    'Write a story about a lost star',
-    'Explain quantum computing simply',
-    'Plan a 3-day trip to Tokyo',
+    '"Cosmic Latte" is the average color of what?',
+    'What is the story behind the Nike logo?',
     'Write a python script for web scraping',
+    'Plan a 3-day trip to Tokyo',
   ];
   
   const onExampleQueryClick = (query: string) => {
@@ -374,12 +374,14 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   };
 
   const handleMessageChange = async (value: string) => {
-    if (value.length > 1) {
-      setSuggestions([
-          `${value} explained`,
-          `what is the history of ${value}`,
-          `write a poem about ${value}`
-      ])
+    if (value.length > 2 && !user) {
+      const trendingTopics = [
+          'latest tech news',
+          'fun facts about the ocean',
+          'explain quantum computing',
+          'best programming languages to learn'
+      ];
+      setSuggestions(trendingTopics.map(t => `${value} ${t.split(' ').slice(1).join(' ')}`));
       setShowSuggestions(true);
     } else {
       setShowSuggestions(false);
@@ -394,7 +396,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
 
   return (
     <>
-    <main className="flex flex-col h-full max-h-screen">
+    <div className="flex flex-col h-screen">
       <header className="flex items-center justify-between p-2 border-b">
         <div className="flex items-center gap-2">
           <SidebarTrigger className="md:hidden" />
@@ -413,8 +415,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
                     Alexzo Intelligence
                     <Check className="ml-auto size-4 text-primary" />
                   </DropdownMenuRadioItem>
-                   <DropdownMenuItem disabled>Coming Soon</DropdownMenuItem>
-                   <DropdownMenuItem disabled>Coming Soon</DropdownMenuItem>
+                   <DropdownMenuItem disabled>Upcoming Model</DropdownMenuItem>
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -450,7 +451,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
             </DropdownMenu>
         </div>
       </header>
-      <div className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto relative">
         {messages.length === 0 && !currentChatId && !isResponding ? (
           <div className="flex flex-col items-center justify-center h-full px-4 text-center">
             
@@ -486,27 +487,29 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
             onEditMessage={handleEditMessage}
           />
         )}
-      </div>
-      <div className="p-4 md:p-6 bg-transparent relative">
-        {showSuggestions && (
-          <Suggestions
-            suggestions={suggestions}
-            onSelectSuggestion={handleSelectSuggestion}
+      </main>
+      <div className="p-4 md:p-6 w-full shrink-0">
+        <div className="relative">
+          {showSuggestions && !user && (
+            <Suggestions
+              suggestions={suggestions}
+              onSelectSuggestion={handleSelectSuggestion}
+            />
+          )}
+          <ChatInput
+            form={form}
+            onSubmit={form.handleSubmit(onSubmit)}
+            isResponding={isResponding}
+            onFileChange={handleFileChange}
+            removeAttachment={removeAttachment}
+            onMessageChange={handleMessageChange}
           />
-        )}
-        <ChatInput
-          form={form}
-          onSubmit={form.handleSubmit(onSubmit)}
-          isResponding={isResponding}
-          onFileChange={handleFileChange}
-          removeAttachment={removeAttachment}
-          onMessageChange={handleMessageChange}
-        />
+        </div>
         <p className="text-center text-xs text-muted-foreground mt-3">
           lhihi AI can make mistakes. Consider checking important information.
         </p>
       </div>
-    </main>
+    </div>
 
     <Dialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen}>
         <DialogContent className="sm:max-w-md bg-background rounded-2xl">

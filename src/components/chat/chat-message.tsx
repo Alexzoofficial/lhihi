@@ -2,10 +2,9 @@
 import type { Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, Volume2, Edit, Check, MoreVertical, List, Plus, Link as LinkIcon, LoaderCircle, Youtube, X } from 'lucide-react';
+import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, Volume2, Edit, Check, List, Plus, Link as LinkIcon, LoaderCircle, Youtube } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useState, useRef, useEffect } from 'react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { textToSpeech } from '@/ai/flows/text-to-speech';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '../ui/badge';
@@ -119,15 +118,21 @@ const renderText = (content: string) => {
         }
         return null;
       }
-      // Process bold text
-      const boldAndListParts = part.split(/(\*\*.*?\*\*)/g);
-      return boldAndListParts.map((subPart, subIndex) => {
-        if (subPart.startsWith('**') && subPart.endsWith('**')) {
-          return <strong key={subIndex}>{subPart.slice(2, -2)}</strong>;
-        }
-        return <span key={subIndex}>{subPart}</span>;
+      // Process bold text and lists
+      const lines = part.split('\n');
+      return lines.map((line, lineIndex) => {
+          if (line.trim().startsWith('•')) {
+              return <div key={lineIndex} className="flex items-start"><span className="mr-2 mt-1"> • </span><span>{line.replace('•', '').trim()}</span></div>
+          }
+          const boldParts = line.split(/(\*\*.*?\*\*)/g);
+          return <p key={lineIndex}>{boldParts.map((subPart, subIndex) => {
+                if (subPart.startsWith('**') && subPart.endsWith('**')) {
+                    return <strong key={subIndex}>{subPart.slice(2, -2)}</strong>;
+                }
+                return <span key={subIndex}>{subPart}</span>;
+            })}</p>;
       });
-    }).filter(Boolean);
+    }).flat().filter(Boolean);
 };
 
 
@@ -139,7 +144,7 @@ export function ChatMessage({ id, role, content, attachments, onRegenerate, onAu
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -166,12 +171,13 @@ export function ChatMessage({ id, role, content, attachments, onRegenerate, onAu
   }
   
   const playAudio = (url: string) => {
-    const audio = audioRef.current || new Audio(url);
     if (!audioRef.current) {
-        (audioRef as React.MutableRefObject<HTMLAudioElement>).current = audio;
-        audio.src = url;
+        audioRef.current = new Audio(url);
+    } else {
+        audioRef.current.src = url;
     }
     
+    const audio = audioRef.current;
     setIsSpeaking(true);
     
     audio.play().catch(e => {
@@ -334,15 +340,15 @@ export function ChatMessage({ id, role, content, attachments, onRegenerate, onAu
               <List className="size-4 text-muted-foreground" />
               <h3 className="text-sm font-semibold">Related</h3>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col items-start gap-2">
               {relatedQueries.map((query, index) => (
                 <button
                   key={index}
                   onClick={() => onSelectQuery?.(query)}
-                  className="flex items-center justify-between text-left p-2 rounded-md border text-sm hover:bg-accent"
+                  className="flex items-center justify-between text-left p-2 rounded-md border text-sm hover:bg-accent w-auto"
                 >
                   <span>{query}</span>
-                  <Plus className="size-4 text-muted-foreground" />
+                  <Plus className="size-4 text-muted-foreground ml-2" />
                 </button>
               ))}
             </div>

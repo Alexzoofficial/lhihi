@@ -203,33 +203,26 @@ export function ChatSidebarContent({ onChatSelect, currentChatId, onNewChat }: {
                   <span className='truncate'>{user.displayName}</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 w-full">
+                <div className="flex items-center gap-2 w-full" onClick={handleLogin}>
                   <UserIcon className="size-5" />
                   <span>Log in</span>
                 </div>
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-[var(--sidebar-width)] mb-2" side="top" align="start">
-            {user ? (
-              <>
-                <DropdownMenuItem disabled>
-                  <Settings className="mr-2 size-4" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 size-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </>
-            ) : (
-              <DropdownMenuItem onClick={handleLogin}>
-                <UserIcon className="mr-2 size-4" />
-                <span>Log in with Google</span>
+          {user && (
+            <DropdownMenuContent className="w-[var(--sidebar-width)] mb-2" side="top" align="start">
+              <DropdownMenuItem disabled>
+                <Settings className="mr-2 size-4" />
+                <span>Settings</span>
               </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 size-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          )}
         </DropdownMenu>
       </SidebarFooter>
     </>
