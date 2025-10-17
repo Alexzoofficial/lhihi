@@ -25,14 +25,25 @@ export function ChatInput({ form, onSubmit, isResponding, onFileChange, removeAt
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      const scrollHeight = textareaRef.current.scrollHeight;
+      if (scrollHeight > 200) {
+        textareaRef.current.style.height = `200px`;
+        textareaRef.current.style.overflowY = 'auto';
+      } else {
+        textareaRef.current.style.height = `${scrollHeight}px`;
+        textareaRef.current.style.overflowY = 'hidden';
+      }
     }
   }, [message]);
   
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Enter' && !event.shiftKey && !isResponding && (form.getValues('message') || form.getValues('attachments').length > 0)) {
+    if (event.key === 'Enter' && !event.shiftKey && !isResponding && (form.getValues('message').trim() || form.getValues('attachments').length > 0)) {
       event.preventDefault();
-      form.handleSubmit(onSubmit)();
+      // Casting the form's onSubmit to a function that accepts no arguments.
+      // This is a bit of a hack, but it works for this use case.
+      (form.handleSubmit(
+        (data) => onSubmit(data as any)
+      ) as () => void)();
     }
   };
   
@@ -108,7 +119,7 @@ export function ChatInput({ form, onSubmit, isResponding, onFileChange, removeAt
               type="submit"
               size="icon"
               className="shrink-0 h-8 w-8"
-              disabled={isResponding || (!message && attachments.length === 0)}
+              disabled={isResponding || (!message.trim() && attachments.length === 0)}
               aria-label="Send message"
             >
               <ArrowUp className="size-4" />
