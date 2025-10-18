@@ -8,8 +8,12 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
-const SEARCH_ENGINE_ID = process.env.SEARCH_ENGINE_ID || '';
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+const SEARCH_ENGINE_ID = process.env.SEARCH_ENGINE_ID;
+
+if (!GOOGLE_API_KEY || !SEARCH_ENGINE_ID) {
+  console.warn('GOOGLE_API_KEY or SEARCH_ENGINE_ID is not set. Web search will not work.');
+}
 
 export const getPageContent = ai.defineTool(
   {

@@ -8,7 +8,11 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || ''; 
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+
+if (!GOOGLE_API_KEY) {
+  console.warn('GOOGLE_API_KEY is not set. YouTube search will not work.');
+} 
 
 export const searchYouTube = ai.defineTool(
   {
