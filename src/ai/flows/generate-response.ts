@@ -19,6 +19,7 @@ import { createTempMailAccount } from '@/ai/tools/temp-mail';
 const GenerateResponseInputSchema = z.object({
   conversationHistory: z.string().describe('The history of the conversation.'),
   userInput: z.string().describe('The current user input.'),
+  model: z.string().optional().describe('The AI model to use for generating the response.').default('googleai/gemini-2.0-flash-exp'),
 });
 
 export type GenerateResponseInput = z.infer<typeof GenerateResponseInputSchema>;
@@ -91,7 +92,9 @@ const generateResponseFlow = ai.defineFlow(
     outputSchema: GenerateResponseOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await prompt(input, {
+      model: input.model || 'googleai/gemini-2.0-flash-exp',
+    });
     return output!;
   }
 );
