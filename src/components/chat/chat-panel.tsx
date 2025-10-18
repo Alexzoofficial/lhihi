@@ -156,6 +156,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
           content: result.response,
           relatedQueries: result.relatedQueries,
           sources: result.sources,
+          thinking: result.thinking,
           createdAt: new Date(),
         };
 

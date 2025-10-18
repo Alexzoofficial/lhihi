@@ -2,13 +2,14 @@
 import type { Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, Volume2, Edit, Check, List, Plus, Link as LinkIcon, LoaderCircle, Youtube } from 'lucide-react';
+import { Paperclip, Copy, ThumbsUp, ThumbsDown, RefreshCw, Volume2, Edit, Check, List, Plus, Link as LinkIcon, LoaderCircle, Youtube, Brain, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useState, useRef, useEffect } from 'react';
 import { textToSpeech } from '@/ai/flows/text-to-speech';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 
 const CodeBlock = ({ children }: { children: string }) => {
   const [copied, setCopied] = useState(false);
@@ -32,6 +33,33 @@ const CodeBlock = ({ children }: { children: string }) => {
         <code>{children}</code>
       </pre>
     </div>
+  );
+};
+
+const ThinkingBox = ({ thinking }: { thinking: string }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full max-w-[85%] mb-3">
+      <CollapsibleTrigger asChild>
+        <button className="flex items-center justify-between w-full p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
+          <div className="flex items-center gap-2">
+            <Brain className="size-4 text-primary" />
+            <span className="text-sm font-medium">Thinking process</span>
+          </div>
+          {isOpen ? (
+            <ChevronUp className="size-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="size-4 text-muted-foreground" />
+          )}
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pt-2">
+        <div className="p-4 rounded-lg border bg-muted/10 text-sm text-muted-foreground whitespace-pre-wrap">
+          {thinking}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 };
 
@@ -136,7 +164,7 @@ const renderText = (content: string) => {
 };
 
 
-export function ChatMessage({ id, role, content, attachments, onRegenerate, onAudioGenerated, audioUrl, relatedQueries, onSelectQuery, sources, onEdit }: Message) {
+export function ChatMessage({ id, role, content, attachments, onRegenerate, onAudioGenerated, audioUrl, relatedQueries, onSelectQuery, sources, onEdit, thinking }: Message) {
   const isUser = role === 'user';
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState(false);
@@ -199,7 +227,7 @@ export function ChatMessage({ id, role, content, attachments, onRegenerate, onAu
       return;
     }
 
-    setIsSpeaking(true); // Show loading state immediately
+    setIsSpeaking(true);
     try {
       const ttsContent = content.replace(/:+:(generating_image|image|youtube)\[.*?\]:+:/g, '');
       const ttsResult = await textToSpeech(ttsContent);
@@ -212,7 +240,7 @@ export function ChatMessage({ id, role, content, attachments, onRegenerate, onAu
     } catch (error: any) {
         console.error("TTS generation failed:", error);
         toast({ variant: 'destructive', title: 'Text-to-Speech Error', description: error.message || 'Could not generate audio.' });
-        setIsSpeaking(false); // Reset loading state on error
+        setIsSpeaking(false);
     }
   };
 
@@ -231,6 +259,10 @@ export function ChatMessage({ id, role, content, attachments, onRegenerate, onAu
   return (
     <div className={cn("flex w-full items-start gap-4", isUser ? "flex-row-reverse" : "flex-row")}>
       <div className={cn("group flex flex-col gap-1 w-full", isUser ? "items-end" : "items-start")}>
+        {!isUser && thinking && (
+          <ThinkingBox thinking={thinking} />
+        )}
+        
         <div 
           className={cn(
             "p-3 rounded-2xl max-w-[85%]", 
@@ -320,7 +352,7 @@ export function ChatMessage({ id, role, content, attachments, onRegenerate, onAu
                         >
                           <Badge variant="outline" className="truncate hover:bg-accent flex items-center gap-1.5">
                             <Image 
-                                src={`https://www.google.com/s2/favicons?domain=${new URL(source).hostname}&sz=16`}
+                                src={`https://www.google.com/s2/favicons?domain=${new URL(source).hostname}&sz=32`}
                                 alt={`${new URL(source).hostname} favicon`}
                                 width={16}
                                 height={16}

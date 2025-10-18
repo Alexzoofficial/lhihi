@@ -46,4 +46,5 @@ export type Message = {
   audioUrl?: string;
   relatedQueries?: string[];
   sources?: string[];
+  thinking?: string;
 };
