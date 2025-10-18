@@ -2,7 +2,26 @@
 
 ## Overview
 
-lhihi AI is a conversational AI application built with Next.js 15, designed to replicate the ChatGPT experience. The application features contextual understanding, text generation, text-to-speech capabilities, and multiple AI-powered tools including web search, image generation, YouTube search, and temporary email creation. The system uses Google's Genkit AI framework with Gemini 1.5 Pro for natural language processing and Firebase for authentication and data persistence.
+lhihi AI is a conversational AI application built with Next.js 15, designed to replicate the ChatGPT experience. The application features contextual understanding, text generation, text-to-speech capabilities, and multiple AI-powered tools including web search, image generation, YouTube search, and temporary email creation. The system uses Google's Genkit AI framework with **multi-model support** (Gemini 2.0 Flash, 1.5 Flash, and 1.5 Pro) for natural language processing and Firebase for authentication and data persistence.
+
+## Recent Changes (October 18, 2025)
+
+**Vercel to Replit Migration**
+- Migrated project from Vercel to Replit environment
+- Configured Next.js dev server to run on port 5000 with 0.0.0.0 binding
+- Removed hardcoded API keys and implemented secure environment variable management
+- Added runtime warnings for missing API credentials (Google API Key, Search Engine ID, Firebase config)
+- Configured deployment settings for production (autoscale deployment target)
+
+**Multi-Model Support**
+- Upgraded default model from Gemini 1.5 Pro to **Gemini 2.0 Flash (experimental)** for faster responses
+- Implemented dynamic model selection with UI dropdown in chat header
+- Added support for three AI models:
+  - **Gemini 2.0 Flash** (default): Fast and efficient - Best for quick responses
+  - **Gemini 1.5 Flash**: Balanced performance and speed
+  - **Gemini 1.5 Pro**: Most capable - Best for complex tasks
+- Model selection persists during chat session and is passed to backend AI flows
+- Created `AVAILABLE_MODELS` array in types.ts for centralized model configuration
 
 ## User Preferences
 
@@ -39,17 +58,24 @@ Preferred communication style: Simple, everyday language.
 - Message streaming with skeleton loading states
 - Support for file attachments with preview
 - Inline rendering of special content types (code blocks, images, YouTube videos)
+- **Model selector dropdown** in header with model name and description
+- Real-time model switching without page reload
 
 ### Backend Architecture
 
 **AI Framework: Google Genkit**
 - Centralized AI instance configuration in `src/ai/genkit.ts`
-- Model: Google Gemini 1.5 Pro via `@genkit-ai/google-genai`
+- Default Model: **Google Gemini 2.0 Flash (experimental)** via `@genkit-ai/google-genai`
+- Multi-model support: Users can switch between Gemini 2.0 Flash, 1.5 Flash, and 1.5 Pro
+- Model selection passed dynamically to AI flows via `model` parameter
 - Development mode with hot-reload via tsx watch
 
 **AI Flows (Server Actions)**
 1. **analyzeContext**: Summarizes conversation history and current input for context-aware responses
 2. **generateResponse**: Core text generation with tool calling, generates related queries and tracks sources
+   - Accepts optional `model` parameter for dynamic model selection
+   - Defaults to `googleai/gemini-2.0-flash-exp` if no model specified
+   - Supports all three Gemini models (2.0 Flash, 1.5 Flash, 1.5 Pro)
 3. **textToSpeech**: Converts text to WAV audio format (24kHz, mono, 16-bit)
 
 **AI Tools (Function Calling)**
@@ -112,7 +138,10 @@ users/{userId}/
 - Google Custom Search API: Web search functionality (requires `GOOGLE_API_KEY` and `SEARCH_ENGINE_ID`)
 - YouTube Data API v3: Video search (requires `GOOGLE_API_KEY`)
 - Google Genkit AI: Core AI orchestration framework
-- Google Gemini 1.5 Pro: Language model for text generation
+- Google Gemini Models: Multi-model support for text generation
+  - Gemini 2.0 Flash (experimental) - Default
+  - Gemini 1.5 Flash
+  - Gemini 1.5 Pro
 
 **Third-Party Services**
 - Pollinations.ai: AI image generation (no API key required)
@@ -151,3 +180,13 @@ users/{userId}/
 - Image domains whitelisted: placehold.co, images.unsplash.com, picsum.photos, image.pollinations.ai
 - TypeScript and ESLint errors ignored during builds for rapid iteration
 - Next.js 15 with Turbopack enabled in development
+- Development server runs on port 5000 with 0.0.0.0 binding for Replit compatibility
+- Production deployment configured with autoscale target
+
+**Security & Environment Variables**
+- All API keys stored as environment variables (never hardcoded)
+- Runtime warnings for missing credentials:
+  - `GOOGLE_API_KEY`: Required for YouTube search and web search
+  - `SEARCH_ENGINE_ID`: Required for Google Custom Search
+  - `NEXT_PUBLIC_FIREBASE_*`: Required for authentication (optional for now)
+- Secrets managed through Replit's secret management system
