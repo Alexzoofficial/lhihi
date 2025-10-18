@@ -12,16 +12,31 @@ lhihi AI is a conversational AI application built with Next.js 15, designed to r
 - Removed hardcoded API keys and implemented secure environment variable management
 - Added runtime warnings for missing API credentials (Google API Key, Search Engine ID, Firebase config)
 - Configured deployment settings for production (autoscale deployment target)
+- Made Firebase optional - app works without Firebase configuration
 
-**Multi-Model Support**
-- Upgraded default model from Gemini 1.5 Pro to **Gemini 2.0 Flash (experimental)** for faster responses
-- Implemented dynamic model selection with UI dropdown in chat header
-- Added support for three AI models:
-  - **Gemini 2.0 Flash** (default): Fast and efficient - Best for quick responses
-  - **Gemini 1.5 Flash**: Balanced performance and speed
-  - **Gemini 1.5 Pro**: Most capable - Best for complex tasks
-- Model selection persists during chat session and is passed to backend AI flows
-- Created `AVAILABLE_MODELS` array in types.ts for centralized model configuration
+**Intelligent Multi-Model Routing System**
+- Implemented smart model router that automatically selects the best AI model based on query type
+- **OpenRouter Integration**: Added free GPT model via OpenRouter API for general conversation
+  - Uses `openai/gpt-4o-mini-2024-07-18` model for cost-effective responses
+  - Secure API key management via `OPENROUTER_API_KEY` environment variable
+  - Graceful fallback to Gemini if OpenRouter fails
+- **Gemini Thinking Model**: Added `gemini-2.0-flash-thinking-exp` for complex reasoning
+  - Automatically detects queries requiring step-by-step reasoning
+  - Displays thinking process in collapsible UI box
+  - Triggers on math, logic, analysis, and multi-step problem-solving queries
+- **Tool Detection**: Smart routing ensures tool-dependent queries use Gemini with Genkit tools
+  - Image generation, web search, YouTube search, temp mail always route to Gemini
+  - Prevents feature regression by prioritizing tool detection over model selection
+- **Routing Priority**: Tools → Reasoning → Conversation
+  1. Tool-dependent queries → Gemini with tools (image gen, search, YouTube, temp mail)
+  2. Complex reasoning queries → Gemini thinking model (math, logic, analysis)
+  3. Simple conversation → OpenRouter (general chat, Q&A)
+
+**Enhanced UI Components**
+- Added `ThinkingBox` component for displaying AI reasoning in collapsible format
+- Enhanced source display with website favicons (32px for retina displays)
+- Updated response schema to include optional `thinking` field for reasoning transparency
+- Added `Message` type extension in types.ts for thinking support
 
 ## User Preferences
 
