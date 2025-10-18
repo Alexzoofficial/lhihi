@@ -8,7 +8,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
-const GOOGLE_API_KEY = "AIzaSyCOJPh3Iu5TUblfBtCnccP619T0X7nMxpw"; 
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || ''; 
 
 export const searchYouTube = ai.defineTool(
   {

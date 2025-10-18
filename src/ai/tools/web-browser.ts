@@ -8,8 +8,8 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
-const GOOGLE_API_KEY = "AIzaSyCOJPh3Iu5TUblfBtCnccP619T0X7nMxpw";
-const SEARCH_ENGINE_ID = "10ab81e2a2a654f90";
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
+const SEARCH_ENGINE_ID = process.env.SEARCH_ENGINE_ID || '';
 
 export const getPageContent = ai.defineTool(
   {
