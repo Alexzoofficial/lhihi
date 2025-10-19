@@ -109,11 +109,23 @@ function getOpenRouterModel(input: GenerateResponseInput): string {
   return 'openai/gpt-4o-mini-2024-07-18';
 }
 
+function isOpenRouterModel(modelId: string | undefined): boolean {
+  if (!modelId) return false;
+  return modelId === 'openai/gpt-oss-20b:free' || 
+         modelId === 'deepseek/deepseek-r1:free' ||
+         modelId === 'openai/gpt-4o-mini-2024-07-18';
+}
+
 export async function generateResponse(input: GenerateResponseInput): Promise<GenerateResponseOutput> {
   // Check for tool-dependent intents FIRST (highest priority)
   if (needsGenkitTools(input.userInput)) {
     // Use Gemini with tools for image generation, web search, YouTube, temp mail
-    return generateResponseFlow(input);
+    // Always use a Gemini model for tool use, even if user selected OpenRouter
+    const genkitInput = {
+      ...input,
+      model: isOpenRouterModel(input.model) ? 'googleai/gemini-2.0-flash-exp' : input.model
+    };
+    return generateResponseFlow(genkitInput);
   }
   
   // Check for complex reasoning needs (second priority)
@@ -127,8 +139,13 @@ export async function generateResponse(input: GenerateResponseInput): Promise<Ge
     return generateWithThinkingModel(input);
   }
   
-  // Default to OpenRouter for simple conversational queries
-  return generateWithOpenRouter(input);
+  // Check if user selected an OpenRouter model
+  if (isOpenRouterModel(input.model)) {
+    return generateWithOpenRouter(input);
+  }
+  
+  // Default to Gemini for simple conversational queries
+  return generateResponseFlow(input);
 }
 
 async function generateWithOpenRouter(input: GenerateResponseInput): Promise<GenerateResponseOutput> {
@@ -171,7 +188,12 @@ After providing an informational response, generate a list of 3-4 related questi
     };
   } catch (error: any) {
     console.error('OpenRouter error:', error);
-    return generateResponseFlow(input);
+    // Fallback to Gemini with a supported model
+    const fallbackInput = {
+      ...input,
+      model: 'googleai/gemini-2.0-flash-exp'
+    };
+    return generateResponseFlow(fallbackInput);
   }
 }
 

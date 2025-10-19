@@ -4,7 +4,24 @@
 
 lhihi AI is a conversational AI application built with Next.js 15, designed to replicate the ChatGPT experience. The application features contextual understanding, text generation, text-to-speech capabilities, and multiple AI-powered tools including web search, image generation, YouTube search, and temporary email creation. The system uses Google's Genkit AI framework with **multi-model support** (Gemini 2.0 Flash, 1.5 Flash, and 1.5 Pro) for natural language processing and Firebase for authentication and data persistence.
 
-## Recent Changes (October 18, 2025)
+## Recent Changes (October 19, 2025)
+
+**New OpenRouter Models Added**
+- **GPT-OSS-20B**: Added free 21B parameter open-source model via OpenRouter
+  - Model ID: `openai/gpt-oss-20b:free`
+  - Apache 2.0 license, fully open-source
+  - Optimized for general conversation and coding tasks
+- **DeepSeek R1**: Added free 671B parameter reasoning model via OpenRouter
+  - Model ID: `deepseek/deepseek-r1:free`
+  - MIT license, comparable to OpenAI's o1 model
+  - Specialized for complex reasoning, math, and logic problems
+- **Updated Routing Logic**: Enhanced model selection to support new OpenRouter models
+  - Tool-dependent queries always use Gemini (with tools) regardless of selected model
+  - DeepSeek R1 can be used for reasoning tasks when explicitly selected
+  - OpenRouter models available for simple conversational queries
+  - Gemini models preserved for all use cases when selected
+
+**Previous Changes (October 18, 2025)**
 
 **Vercel to Replit Migration**
 - Migrated project from Vercel to Replit environment
@@ -27,10 +44,10 @@ lhihi AI is a conversational AI application built with Next.js 15, designed to r
 - **Tool Detection**: Smart routing ensures tool-dependent queries use Gemini with Genkit tools
   - Image generation, web search, YouTube search, temp mail always route to Gemini
   - Prevents feature regression by prioritizing tool detection over model selection
-- **Routing Priority**: Tools → Reasoning → Conversation
-  1. Tool-dependent queries → Gemini with tools (image gen, search, YouTube, temp mail)
-  2. Complex reasoning queries → Gemini thinking model (math, logic, analysis)
-  3. Simple conversation → OpenRouter (general chat, Q&A)
+- **Routing Priority**: Tools → Reasoning → User Selection
+  1. Tool-dependent queries → Always Gemini with tools (image gen, search, YouTube, temp mail)
+  2. Complex reasoning queries → DeepSeek R1 (if selected) or Gemini thinking model
+  3. Simple conversation → User's selected model (OpenRouter or Gemini)
 
 **Enhanced UI Components**
 - Added `ThinkingBox` component for displaying AI reasoning in collapsible format
