@@ -23,6 +23,16 @@ export const AVAILABLE_MODELS: AIModel[] = [
     name: 'Gemini 1.5 Pro',
     description: 'Most capable - Best for complex tasks',
   },
+  {
+    id: 'openai/gpt-oss-20b:free',
+    name: 'GPT-OSS-20B',
+    description: '21B parameters - Free & open-source for general chat',
+  },
+  {
+    id: 'deepseek/deepseek-r1:free',
+    name: 'DeepSeek R1',
+    description: '671B parameters - Free & powerful reasoning model',
+  },
 ];
 
 export type Attachment = {
