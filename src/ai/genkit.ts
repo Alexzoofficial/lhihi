@@ -10,6 +10,7 @@ export const ai = genkit({
 export async function callOpenRouter(messages: Array<{role: string, content: string}>, options?: {
   temperature?: number;
   maxTokens?: number;
+  model?: string;
 }): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   
@@ -28,7 +29,7 @@ export async function callOpenRouter(messages: Array<{role: string, content: str
       'X-Title': 'Lhihi AI',
     },
     body: JSON.stringify({
-      model: 'openai/gpt-4o-mini-2024-07-18',
+      model: options?.model || 'openai/gpt-4o-mini-2024-07-18',
       messages,
       temperature: options?.temperature || 0.7,
       max_tokens: options?.maxTokens || 2048,
