@@ -1,25 +1,28 @@
-# lhihi AI - ChatGPT Clone
+# lhihi AI - ChatGPT Clone with Alexzo Intelligence
 
 ## Overview
 
-lhihi AI is a conversational AI application built with Next.js 15, designed to replicate the ChatGPT experience. The application features contextual understanding, text generation, text-to-speech capabilities, and multiple AI-powered tools including web search, image generation, YouTube search, and temporary email creation. The system uses Google's Genkit AI framework with **multi-model support** (Gemini 2.0 Flash, 1.5 Flash, and 1.5 Pro) for natural language processing and Firebase for authentication and data persistence.
+lhihi AI is a conversational AI application built with Next.js 15, designed to replicate the ChatGPT experience. The application features contextual understanding, text generation, text-to-speech capabilities, and multiple AI-powered tools including web search, image generation, YouTube search, and temporary email creation. The system uses **Alexzo Intelligence** - a unified AI system that automatically selects the best model based on query type, combining Google's Gemini models (via Genkit) and OpenRouter's free models (GPT-OSS-20B and DeepSeek R1) for optimal performance without requiring manual model selection.
 
 ## Recent Changes (October 19, 2025)
 
-**New OpenRouter Models Added**
-- **GPT-OSS-20B**: Added free 21B parameter open-source model via OpenRouter
-  - Model ID: `openai/gpt-oss-20b:free`
-  - Apache 2.0 license, fully open-source
-  - Optimized for general conversation and coding tasks
-- **DeepSeek R1**: Added free 671B parameter reasoning model via OpenRouter
-  - Model ID: `deepseek/deepseek-r1:free`
-  - MIT license, comparable to OpenAI's o1 model
-  - Specialized for complex reasoning, math, and logic problems
-- **Updated Routing Logic**: Enhanced model selection to support new OpenRouter models
-  - Tool-dependent queries always use Gemini (with tools) regardless of selected model
-  - DeepSeek R1 can be used for reasoning tasks when explicitly selected
-  - OpenRouter models available for simple conversational queries
-  - Gemini models preserved for all use cases when selected
+**Unified Alexzo Intelligence System**
+- **Zero-Configuration Experience**: Removed manual model selection completely
+  - Users no longer need to select models manually
+  - System automatically chooses the best model based on query type
+  - Header displays "Alexzo Intelligence" instead of model selector dropdown
+- **Automatic Intelligent Routing**: Smart backend automatically selects optimal models
+  - **Tool-Dependent Queries** → Gemini 2.0 Flash with Genkit tools
+    - Image generation, web search, YouTube search, temporary email
+  - **Complex Reasoning** → DeepSeek R1 (671B parameters, free via OpenRouter)
+    - Math calculations, logic problems, step-by-step analysis
+    - Automatically detects reasoning keywords and mathematical symbols
+  - **Simple Conversation** → GPT-OSS-20B (21B parameters, free via OpenRouter)
+    - General chat, Q&A, coding assistance
+- **OpenRouter Integration**: Added free high-quality models
+  - **GPT-OSS-20B**: Apache 2.0 licensed, 21B parameter open-source model
+  - **DeepSeek R1**: MIT licensed, 671B parameter reasoning powerhouse
+  - Graceful fallback to Gemini if OpenRouter API fails
 
 **Previous Changes (October 18, 2025)**
 
@@ -31,29 +34,6 @@ lhihi AI is a conversational AI application built with Next.js 15, designed to r
 - Configured deployment settings for production (autoscale deployment target)
 - Made Firebase optional - app works without Firebase configuration
 
-**Intelligent Multi-Model Routing System**
-- Implemented smart model router that automatically selects the best AI model based on query type
-- **OpenRouter Integration**: Added free GPT model via OpenRouter API for general conversation
-  - Uses `openai/gpt-4o-mini-2024-07-18` model for cost-effective responses
-  - Secure API key management via `OPENROUTER_API_KEY` environment variable
-  - Graceful fallback to Gemini if OpenRouter fails
-- **Gemini Thinking Model**: Added `gemini-2.0-flash-thinking-exp` for complex reasoning
-  - Automatically detects queries requiring step-by-step reasoning
-  - Displays thinking process in collapsible UI box
-  - Triggers on math, logic, analysis, and multi-step problem-solving queries
-- **Tool Detection**: Smart routing ensures tool-dependent queries use Gemini with Genkit tools
-  - Image generation, web search, YouTube search, temp mail always route to Gemini
-  - Prevents feature regression by prioritizing tool detection over model selection
-- **Routing Priority**: Tools → Reasoning → User Selection
-  1. Tool-dependent queries → Always Gemini with tools (image gen, search, YouTube, temp mail)
-  2. Complex reasoning queries → DeepSeek R1 (if selected) or Gemini thinking model
-  3. Simple conversation → User's selected model (OpenRouter or Gemini)
-
-**Enhanced UI Components**
-- Added `ThinkingBox` component for displaying AI reasoning in collapsible format
-- Enhanced source display with website favicons (32px for retina displays)
-- Updated response schema to include optional `thinking` field for reasoning transparency
-- Added `Message` type extension in types.ts for thinking support
 
 ## User Preferences
 
@@ -90,24 +70,28 @@ Preferred communication style: Simple, everyday language.
 - Message streaming with skeleton loading states
 - Support for file attachments with preview
 - Inline rendering of special content types (code blocks, images, YouTube videos)
-- **Model selector dropdown** in header with model name and description
-- Real-time model switching without page reload
+- **"Alexzo Intelligence" header** - unified AI branding without model selection dropdown
+- Zero-configuration experience for end users
 
 ### Backend Architecture
 
-**AI Framework: Google Genkit**
+**AI Framework: Alexzo Intelligence with Google Genkit & OpenRouter**
 - Centralized AI instance configuration in `src/ai/genkit.ts`
-- Default Model: **Google Gemini 2.0 Flash (experimental)** via `@genkit-ai/google-genai`
-- Multi-model support: Users can switch between Gemini 2.0 Flash, 1.5 Flash, and 1.5 Pro
-- Model selection passed dynamically to AI flows via `model` parameter
+- Automatic model selection based on query type (no manual configuration required)
+- **Multi-Backend Architecture**:
+  - Google Gemini 2.0 Flash (via Genkit) for tool-dependent queries
+  - DeepSeek R1 (via OpenRouter) for complex reasoning
+  - GPT-OSS-20B (via OpenRouter) for simple conversation
 - Development mode with hot-reload via tsx watch
 
 **AI Flows (Server Actions)**
 1. **analyzeContext**: Summarizes conversation history and current input for context-aware responses
-2. **generateResponse**: Core text generation with tool calling, generates related queries and tracks sources
-   - Accepts optional `model` parameter for dynamic model selection
-   - Defaults to `googleai/gemini-2.0-flash-exp` if no model specified
-   - Supports all three Gemini models (2.0 Flash, 1.5 Flash, 1.5 Pro)
+2. **generateResponse**: Core text generation with automatic model routing, tool calling, and response enhancement
+   - Automatically detects query type and selects optimal model
+   - Tool-dependent intents → Gemini 2.0 Flash with Genkit tools
+   - Complex reasoning → DeepSeek R1 via OpenRouter
+   - Simple conversation → GPT-OSS-20B via OpenRouter
+   - Generates related queries and tracks sources
 3. **textToSpeech**: Converts text to WAV audio format (24kHz, mono, 16-bit)
 
 **AI Tools (Function Calling)**
