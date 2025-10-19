@@ -19,7 +19,6 @@ import { createTempMailAccount } from '@/ai/tools/temp-mail';
 const GenerateResponseInputSchema = z.object({
   conversationHistory: z.string().describe('The history of the conversation.'),
   userInput: z.string().describe('The current user input.'),
-  model: z.string().optional().describe('The AI model to use for generating the response.').default('googleai/gemini-2.0-flash-exp'),
 });
 
 export type GenerateResponseInput = z.infer<typeof GenerateResponseInputSchema>;
@@ -95,60 +94,24 @@ function needsComplexReasoning(userInput: string): boolean {
   return hasReasoningKeywords || hasMathSymbols || hasComplexQuestion;
 }
 
-function getOpenRouterModel(input: GenerateResponseInput): string {
-  const selectedModel = input.model || 'googleai/gemini-2.0-flash-exp';
-  
-  if (selectedModel === 'deepseek/deepseek-r1:free') {
-    return 'deepseek/deepseek-r1:free';
-  }
-  
-  if (selectedModel === 'openai/gpt-oss-20b:free') {
-    return 'openai/gpt-oss-20b:free';
-  }
-  
-  return 'openai/gpt-4o-mini-2024-07-18';
-}
-
-function isOpenRouterModel(modelId: string | undefined): boolean {
-  if (!modelId) return false;
-  return modelId === 'openai/gpt-oss-20b:free' || 
-         modelId === 'deepseek/deepseek-r1:free' ||
-         modelId === 'openai/gpt-4o-mini-2024-07-18';
-}
-
 export async function generateResponse(input: GenerateResponseInput): Promise<GenerateResponseOutput> {
   // Check for tool-dependent intents FIRST (highest priority)
   if (needsGenkitTools(input.userInput)) {
     // Use Gemini with tools for image generation, web search, YouTube, temp mail
-    // Always use a Gemini model for tool use, even if user selected OpenRouter
-    const genkitInput = {
-      ...input,
-      model: isOpenRouterModel(input.model) ? 'googleai/gemini-2.0-flash-exp' : input.model
-    };
-    return generateResponseFlow(genkitInput);
+    return generateResponseFlow(input);
   }
   
   // Check for complex reasoning needs (second priority)
-  const needsReasoning = needsComplexReasoning(input.userInput);
-  if (needsReasoning) {
-    // If user selected DeepSeek R1, use it for reasoning instead of Gemini thinking model
-    if (input.model === 'deepseek/deepseek-r1:free') {
-      return generateWithOpenRouter(input);
-    }
-    // Use Gemini thinking model for complex reasoning
-    return generateWithThinkingModel(input);
+  if (needsComplexReasoning(input.userInput)) {
+    // Use DeepSeek R1 via OpenRouter for complex reasoning
+    return generateWithOpenRouter(input, 'deepseek/deepseek-r1:free');
   }
   
-  // Check if user selected an OpenRouter model
-  if (isOpenRouterModel(input.model)) {
-    return generateWithOpenRouter(input);
-  }
-  
-  // Default to Gemini for simple conversational queries
-  return generateResponseFlow(input);
+  // Default to GPT-OSS-20B via OpenRouter for simple conversational queries
+  return generateWithOpenRouter(input, 'openai/gpt-oss-20b:free');
 }
 
-async function generateWithOpenRouter(input: GenerateResponseInput): Promise<GenerateResponseOutput> {
+async function generateWithOpenRouter(input: GenerateResponseInput, model: string): Promise<GenerateResponseOutput> {
   try {
     const messages = [
       {
@@ -177,8 +140,7 @@ After providing an informational response, generate a list of 3-4 related questi
       content: input.userInput
     });
 
-    const selectedModel = getOpenRouterModel(input);
-    const responseText = await callOpenRouter(messages, { model: selectedModel });
+    const responseText = await callOpenRouter(messages, { model });
     
     const relatedQueries = extractRelatedQueries(responseText);
     
@@ -188,12 +150,8 @@ After providing an informational response, generate a list of 3-4 related questi
     };
   } catch (error: any) {
     console.error('OpenRouter error:', error);
-    // Fallback to Gemini with a supported model
-    const fallbackInput = {
-      ...input,
-      model: 'googleai/gemini-2.0-flash-exp'
-    };
-    return generateResponseFlow(fallbackInput);
+    // Fallback to Gemini
+    return generateResponseFlow(input);
   }
 }
 
@@ -346,7 +304,7 @@ const generateResponseFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input, {
-      model: input.model || 'googleai/gemini-2.0-flash-exp',
+      model: 'googleai/gemini-2.0-flash-exp',
     });
     return output!;
   }

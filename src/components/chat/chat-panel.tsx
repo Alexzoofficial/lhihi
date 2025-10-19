@@ -7,18 +7,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { generateResponse } from '@/ai/flows/generate-response';
 import type { Message, Attachment } from '@/lib/types';
-import { AVAILABLE_MODELS } from '@/lib/types';
 import { ChatMessages } from './chat-messages';
 import { ChatInput } from './chat-input';
 import { LhihiLogo } from '../icons';
 import { Button } from '../ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { ChevronDown, UserIcon, Check } from 'lucide-react';
+import { UserIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuTrigger,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -54,7 +51,6 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
   const { toast } = useToast();
   const { firestore } = useFirebase();
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
-  const [model, setModel] = useState('googleai/gemini-2.0-flash-exp');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -147,7 +143,6 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
         const result = await generateResponse({
           conversationHistory: historyString,
           userInput: userMessageContent,
-          model: model,
         });
 
         const assistantMessage: Message = {
@@ -405,28 +400,7 @@ export default function ChatPanel({ chatId: currentChatId, setChatId: setCurrent
           <SidebarTrigger className="md:hidden" />
         </div>
         <div className="flex-1 flex justify-center">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2">
-                  <span className="text-lg font-semibold">
-                    {AVAILABLE_MODELS.find(m => m.id === model)?.name || 'Select Model'}
-                  </span>
-                  <ChevronDown className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuRadioGroup value={model} onValueChange={setModel}>
-                  {AVAILABLE_MODELS.map((m) => (
-                    <DropdownMenuRadioItem key={m.id} value={m.id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{m.name}</span>
-                        <span className="text-xs text-muted-foreground">{m.description}</span>
-                      </div>
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <span className="text-lg font-semibold">Alexzo Intelligence</span>
         </div>
         <div className="flex items-center gap-2">
             <DropdownMenu>
