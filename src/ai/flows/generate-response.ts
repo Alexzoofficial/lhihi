@@ -95,6 +95,20 @@ function needsComplexReasoning(userInput: string): boolean {
   return hasReasoningKeywords || hasMathSymbols || hasComplexQuestion;
 }
 
+function getOpenRouterModel(input: GenerateResponseInput): string {
+  const selectedModel = input.model || 'googleai/gemini-2.0-flash-exp';
+  
+  if (selectedModel === 'deepseek/deepseek-r1:free') {
+    return 'deepseek/deepseek-r1:free';
+  }
+  
+  if (selectedModel === 'openai/gpt-oss-20b:free') {
+    return 'openai/gpt-oss-20b:free';
+  }
+  
+  return 'openai/gpt-4o-mini-2024-07-18';
+}
+
 export async function generateResponse(input: GenerateResponseInput): Promise<GenerateResponseOutput> {
   // Check for tool-dependent intents FIRST (highest priority)
   if (needsGenkitTools(input.userInput)) {
@@ -105,6 +119,10 @@ export async function generateResponse(input: GenerateResponseInput): Promise<Ge
   // Check for complex reasoning needs (second priority)
   const needsReasoning = needsComplexReasoning(input.userInput);
   if (needsReasoning) {
+    // If user selected DeepSeek R1, use it for reasoning instead of Gemini thinking model
+    if (input.model === 'deepseek/deepseek-r1:free') {
+      return generateWithOpenRouter(input);
+    }
     // Use Gemini thinking model for complex reasoning
     return generateWithThinkingModel(input);
   }
@@ -142,7 +160,8 @@ After providing an informational response, generate a list of 3-4 related questi
       content: input.userInput
     });
 
-    const responseText = await callOpenRouter(messages);
+    const selectedModel = getOpenRouterModel(input);
+    const responseText = await callOpenRouter(messages, { model: selectedModel });
     
     const relatedQueries = extractRelatedQueries(responseText);
     
