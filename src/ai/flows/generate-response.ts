@@ -230,21 +230,18 @@ User Input:
 Response:`,
   });
 
-  const thinkingFlow = ai.defineFlow(
-    {
-      name: 'thinkingFlow',
-      inputSchema: GenerateResponseInputSchema,
-      outputSchema: GenerateResponseOutputSchema,
-    },
-    async input => {
-      const {output} = await thinkingPrompt(input, {
-        model: 'googleai/gemini-2.0-flash-thinking-exp',
-      });
-      return output!;
+  try {
+    const url = `https://text.pollinations.ai/${encodeURIComponent(input.userInput)}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-  );
-
-  return thinkingFlow(input);
+    const text = await response.text();
+    return { response: text };
+  } catch (error) {
+    console.error('Error generating response from Pollinations.ai:', error);
+    return { response: 'Sorry, I encountered an error. Please try again.' };
+  }
 }
 
 const prompt = ai.definePrompt({
@@ -303,9 +300,18 @@ const generateResponseFlow = ai.defineFlow(
     outputSchema: GenerateResponseOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input, {
-      model: 'googleai/gemini-2.0-flash-exp',
-    });
-    return output!;
+    try {
+      const prompt = input.userInput;
+      const url = `https://text.pollinations.ai/${encodeURIComponent(prompt)}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const text = await response.text();
+      return { response: text };
+    } catch (error) {
+      console.error('Error generating response from Pollinations.ai:', error);
+      return { response: 'Sorry, I encountered an error. Please try again.' };
+    }
   }
 );
