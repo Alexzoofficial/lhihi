@@ -107,8 +107,24 @@ export async function generateResponse(input: GenerateResponseInput): Promise<Ge
     return generateWithOpenRouter(input, 'deepseek/deepseek-r1:free');
   }
   
-  // Default to GPT-OSS-20B via OpenRouter for simple conversational queries
-  return generateWithOpenRouter(input, 'openai/gpt-oss-20b:free');
+  // Default to Pollinations.ai for simple conversational queries
+  return generateWithPollinations(input);
+}
+
+async function generateWithPollinations(input: GenerateResponseInput): Promise<GenerateResponseOutput> {
+  try {
+    const prompt = input.userInput;
+    const url = `https://text.pollinations.ai/${encodeURIComponent(prompt)}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const text = await response.text();
+    return { response: text };
+  } catch (error) {
+    console.error('Error generating response from Pollinations.ai:', error);
+    return { response: 'Sorry, I encountered an error. Please try again.' };
+  }
 }
 
 async function generateWithOpenRouter(input: GenerateResponseInput, model: string): Promise<GenerateResponseOutput> {
@@ -230,18 +246,21 @@ User Input:
 Response:`,
   });
 
-  try {
-    const url = `https://text.pollinations.ai/${encodeURIComponent(input.userInput)}`;
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+  const thinkingFlow = ai.defineFlow(
+    {
+      name: 'thinkingFlow',
+      inputSchema: GenerateResponseInputSchema,
+      outputSchema: GenerateResponseOutputSchema,
+    },
+    async input => {
+      const {output} = await thinkingPrompt(input, {
+        model: 'googleai/gemini-2.0-flash-thinking-exp',
+      });
+      return output!;
     }
-    const text = await response.text();
-    return { response: text };
-  } catch (error) {
-    console.error('Error generating response from Pollinations.ai:', error);
-    return { response: 'Sorry, I encountered an error. Please try again.' };
-  }
+  );
+
+  return thinkingFlow(input);
 }
 
 const prompt = ai.definePrompt({
@@ -300,18 +319,9 @@ const generateResponseFlow = ai.defineFlow(
     outputSchema: GenerateResponseOutputSchema,
   },
   async input => {
-    try {
-      const prompt = input.userInput;
-      const url = `https://text.pollinations.ai/${encodeURIComponent(prompt)}`;
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const text = await response.text();
-      return { response: text };
-    } catch (error) {
-      console.error('Error generating response from Pollinations.ai:', error);
-      return { response: 'Sorry, I encountered an error. Please try again.' };
-    }
+    const {output} = await prompt(input, {
+      model: 'googleai/gemini-2.0-flash-exp',
+    });
+    return output!;
   }
 );

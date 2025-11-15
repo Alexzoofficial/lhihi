@@ -5,7 +5,7 @@ global.fetch = jest.fn(() =>
   Promise.resolve({
     ok: true,
     text: () => Promise.resolve('This is a mock response.'),
-  } as Response)
+  })
 );
 
 describe('generateResponse', () => {
