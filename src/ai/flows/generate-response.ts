@@ -107,8 +107,24 @@ export async function generateResponse(input: GenerateResponseInput): Promise<Ge
     return generateWithOpenRouter(input, 'deepseek/deepseek-r1:free');
   }
   
-  // Default to GPT-OSS-20B via OpenRouter for simple conversational queries
-  return generateWithOpenRouter(input, 'openai/gpt-oss-20b:free');
+  // Default to Pollinations.ai for simple conversational queries
+  return generateWithPollinations(input);
+}
+
+async function generateWithPollinations(input: GenerateResponseInput): Promise<GenerateResponseOutput> {
+  try {
+    const prompt = input.userInput;
+    const url = `https://text.pollinations.ai/${encodeURIComponent(prompt)}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const text = await response.text();
+    return { response: text };
+  } catch (error) {
+    console.error('Error generating response from Pollinations.ai:', error);
+    return { response: 'Sorry, I encountered an error. Please try again.' };
+  }
 }
 
 async function generateWithOpenRouter(input: GenerateResponseInput, model: string): Promise<GenerateResponseOutput> {
